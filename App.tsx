@@ -37,6 +37,7 @@ import { useExport } from './hooks/useExport';
 import { aiService } from './aiService';
 import { dbHelpers, authHelpers, storageHelpers } from './lib/supabase';
 import { localProjectStore } from './lib/localProjects';
+import { canUseGeneration, getRemainingGenerations, recordGenerationSuccess, STANDARD_PLAN_GENERATION_LIMIT } from './lib/generationUsage';
 // import { db } from './db'; // Removing IDB dependency for Project saving
 import { RemixEngine } from './components/Remix/RemixEngine';
 import { useRemix } from './components/Remix/useRemix';
@@ -107,6 +108,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
 
   // New State for Supabase Integration
   const [userId, setUserId] = useState<string | null>(null);
+  const [isAdminUser, setIsAdminUser] = useState(false);
   const [currentPlan, setCurrentPlan] = useState<PlanTier>(() => {
     const storedPlan = localStorage.getItem('vd_plan');
     if (storedPlan === 'starter' || storedPlan === 'standard' || storedPlan === 'premium') {
@@ -116,14 +118,25 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
   });
   const [showCreditsModal, setShowCreditsModal] = useState(false);
   const [isNewProject, setIsNewProject] = useState(true);
+  const [remainingGenerations, setRemainingGenerations] = useState<number>(0);
 
   const handleBackClick = () => {
     if (onBackToDashboard) onBackToDashboard();
   };
 
-  const hasGenerationAccess = DEV_BYPASS_CREDITS || currentPlan === 'standard' || currentPlan === 'premium';
-  const hasPremiumAccess = DEV_BYPASS_CREDITS || currentPlan === 'premium';
-  const planLabel = DEV_BYPASS_CREDITS ? 'Premium' : currentPlan === 'premium' ? 'Premium' : currentPlan === 'standard' ? 'Standard' : currentPlan === 'starter' ? 'Starter' : 'No Subscription';
+  const hasGenerationAccess = DEV_BYPASS_CREDITS || isAdminUser || canUseGeneration(userId, currentPlan === 'none' ? null : currentPlan);
+  const hasPremiumAccess = DEV_BYPASS_CREDITS || isAdminUser || currentPlan === 'premium';
+  const planLabel = DEV_BYPASS_CREDITS
+    ? 'Premium'
+    : isAdminUser
+      ? 'Admin'
+      : currentPlan === 'premium'
+        ? 'Premium'
+        : currentPlan === 'standard'
+          ? `Standard${Number.isFinite(remainingGenerations) ? ` (${remainingGenerations}/${STANDARD_PLAN_GENERATION_LIMIT} left)` : ''}`
+          : currentPlan === 'starter'
+            ? 'Starter'
+            : 'No Subscription';
 
   const applyPlan = (plan: PlanTier) => {
     setCurrentPlan(plan);
@@ -138,10 +151,23 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
     authHelpers.getCurrentUser().then(async (user) => {
       if (user) {
         setUserId(user.id);
+        setIsAdminUser(Boolean(user.is_admin));
         await dbHelpers.initUserProfile(user.id);
+      } else {
+        setUserId(null);
+        setIsAdminUser(false);
       }
     });
   }, []);
+
+  useEffect(() => {
+    if (!userId) {
+      setRemainingGenerations(0);
+      return;
+    }
+
+    setRemainingGenerations(getRemainingGenerations(userId, currentPlan === 'none' ? null : currentPlan));
+  }, [userId, currentPlan]);
 
   // Initialize from Prop (Supabase Data)
   useEffect(() => {
@@ -1168,6 +1194,12 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
   };
 
   const handleGenerateVadeoAd = async (files: File[], prompt: string, aspectRatio: AspectRatio) => {
+    if (!hasGenerationAccess) {
+      alert('Standard includes up to 20 generations. Upgrade or renew to continue.');
+      setShowCreditsModal(true);
+      return;
+    }
+
     const imageFiles = files.filter((file) => file.type.startsWith('image/')).slice(0, VADEO_MAX_AD_IMAGES);
 
     if (imageFiles.length === 0) {
@@ -1219,6 +1251,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
       );
 
       addGeneratedVideoLayer(resultUrl, 'Vadeo ad', VEO_GENERATED_DURATION_SEC);
+      setRemainingGenerations(recordGenerationSuccess(userId, currentPlan === 'none' ? null : currentPlan));
       setShowVadeoAdModal(false);
     } catch (err: any) {
       console.error(err);
@@ -1230,6 +1263,12 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
   };
 
   const handleGenerateTextVideo = async (prompt: string, aspectRatio: AspectRatio, audioEnabled: boolean, audioType: 'auto' | 'dialogue' | 'sound-effects' | 'ambient', imageFile?: File | null) => {
+    if (!hasGenerationAccess) {
+      alert('Standard includes up to 20 generations. Upgrade or renew to continue.');
+      setShowCreditsModal(true);
+      return;
+    }
+
     setIsGenerating(true);
     setStatusText('Preparing Veo generation...');
 
@@ -1275,6 +1314,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
       }
 
       addGeneratedVideoLayer(resultUrl, 'Generated video', VEO_GENERATED_DURATION_SEC);
+      setRemainingGenerations(recordGenerationSuccess(userId, currentPlan === 'none' ? null : currentPlan));
       setShowVadeoAdModal(false);
     } catch (err: any) {
       console.error(err);
@@ -1286,6 +1326,12 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
   };
 
   const handleGenerateFrameVideo = async (startFile: File, endFile: File, prompt: string, aspectRatio: AspectRatio, audioEnabled: boolean, audioType: 'auto' | 'dialogue' | 'sound-effects' | 'ambient') => {
+    if (!hasGenerationAccess) {
+      alert('Standard includes up to 20 generations. Upgrade or renew to continue.');
+      setShowCreditsModal(true);
+      return;
+    }
+
     setIsGenerating(true);
     setStatusText('Preparing frame-to-video generation...');
 
@@ -1330,6 +1376,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
         audioType
       );
       addGeneratedVideoLayer(resultUrl, 'Frame video', VEO_GENERATED_DURATION_SEC);
+      setRemainingGenerations(recordGenerationSuccess(userId, currentPlan === 'none' ? null : currentPlan));
       setShowVadeoAdModal(false);
     } catch (err: any) {
       console.error(err);
@@ -1341,6 +1388,12 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
   };
 
   const handleGenerateReferenceVideo = async (files: File[], prompt: string, aspectRatio: AspectRatio, audioEnabled: boolean, audioType: 'auto' | 'dialogue' | 'sound-effects' | 'ambient') => {
+    if (!hasGenerationAccess) {
+      alert('Standard includes up to 20 generations. Upgrade or renew to continue.');
+      setShowCreditsModal(true);
+      return;
+    }
+
     setIsGenerating(true);
     setStatusText('Preparing reference-video generation...');
 
@@ -1377,6 +1430,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
         audioType
       );
       addGeneratedVideoLayer(resultUrl, 'Reference video', VEO_GENERATED_DURATION_SEC);
+      setRemainingGenerations(recordGenerationSuccess(userId, currentPlan === 'none' ? null : currentPlan));
       setShowVadeoAdModal(false);
     } catch (err: any) {
       console.error(err);

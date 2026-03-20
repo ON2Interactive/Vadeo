@@ -83,6 +83,10 @@ const AppRouter: React.FC = () => {
         // Sync view with URL path
         const path = location.pathname;
         console.log('AppRouter: path changed to', path); // DEBUG
+        if (path === '/dashboard') {
+            navigate('/editor', { replace: true });
+            return;
+        }
         if (path === '/contact') {
             setView('contact');
         } else if (path === '/about') {
@@ -129,6 +133,12 @@ const AppRouter: React.FC = () => {
         const session = await authHelpers.getSession();
         const path = window.location.pathname;
 
+        if (path === '/dashboard') {
+            navigate('/editor', { replace: true });
+            setLoading(false);
+            return;
+        }
+
         if (session) {
             const adminStatus = await adminHelpers.isUserAdmin(session.user.id);
             setIsAdmin(adminStatus);
@@ -157,8 +167,6 @@ const AppRouter: React.FC = () => {
                 setView('dmca');
             } else if (path === '/') {
                 setView('landing');
-            } else if (path === '/dashboard') {
-                setView('dashboard');
             } else if (path.startsWith('/editor')) {
                 setView('editor');
             } else if (path === '/admin') {
@@ -207,8 +215,6 @@ const AppRouter: React.FC = () => {
                 setView('verifyEmail');
             } else if (path === '/auth/google/callback') {
                 setView('googleCallback');
-            } else if (path === '/dashboard') {
-                setView('dashboard');
             } else if (path.startsWith('/editor')) {
                 setView('editor');
             } else {

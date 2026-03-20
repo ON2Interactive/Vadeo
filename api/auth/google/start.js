@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { getBaseUrl, setStateCookie } from '../_utils';
+import { getBaseUrl, setStateCookie } from '../_utils.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {

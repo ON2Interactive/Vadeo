@@ -4,7 +4,7 @@ import {
   getBaseUrl,
   getStateFromRequest,
   setSessionCookie,
-} from '../_utils';
+} from '../_utils.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {

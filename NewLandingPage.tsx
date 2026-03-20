@@ -24,69 +24,6 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
         document.title = "Vadeo | Turn Images Into Video Ads";
     }, []);
 
-    const imageRef = React.useRef<HTMLImageElement>(null);
-    const designImageRef = React.useRef<HTMLImageElement>(null);
-    const generateImageRef = React.useRef<HTMLImageElement>(null);
-    const generateVideoRef = React.useRef<HTMLVideoElement>(null);
-    const [scrollStyles, setScrollStyles] = useState({
-        opacity: 0,
-        transform: 'translateY(40px) scale(0.95)'
-    });
-    const [designScrollStyles, setDesignScrollStyles] = useState({
-        opacity: 0,
-        transform: 'translateY(40px) scale(0.95)'
-    });
-    const [generateScrollStyles, setGenerateScrollStyles] = useState({
-        opacity: 0,
-        transform: 'translateY(40px) scale(0.95)'
-    });
-    const [generateVideoScrollStyles, setGenerateVideoScrollStyles] = useState({
-        opacity: 0,
-        transform: 'translateY(40px) scale(0.95)'
-    });
-
-    React.useEffect(() => {
-        const getScrollStyles = (element: HTMLElement | null) => {
-            if (!element) {
-                return {
-                    opacity: 0,
-                    transform: 'translateY(40px) scale(0.95)'
-                };
-            }
-
-            const rect = element.getBoundingClientRect();
-            const windowHeight = window.innerHeight;
-            const elementCenter = rect.top + rect.height / 2;
-            const viewCenter = windowHeight / 2;
-            const distanceFromCenter = Math.abs(elementCenter - viewCenter);
-            const fadeRange = windowHeight * 0.5;
-
-            let opacity = 1 - (distanceFromCenter / fadeRange);
-            opacity = Math.max(0, Math.min(1, opacity));
-
-            const smoothOpacity = Math.pow(opacity, 1.5);
-            const translateY = 40 * (1 - smoothOpacity);
-            const scale = 0.95 + (0.05 * smoothOpacity);
-
-            return {
-                opacity: smoothOpacity,
-                transform: `translateY(${translateY}px) scale(${scale})`
-            };
-        };
-
-        const handleScroll = () => {
-            setScrollStyles(getScrollStyles(imageRef.current));
-            setDesignScrollStyles(getScrollStyles(designImageRef.current));
-            setGenerateScrollStyles(getScrollStyles(generateImageRef.current));
-            setGenerateVideoScrollStyles(getScrollStyles(generateVideoRef.current));
-        };
-
-        window.addEventListener('scroll', handleScroll, { passive: true });
-        handleScroll(); // Initial position check
-        
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
-
     const handleSoonSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const token = await executeRecaptcha('UPCOMING_FEATURE');
@@ -175,15 +112,9 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
 
                     <div className="mt-10 overflow-hidden rounded-[18px] border border-white/10 bg-zinc-950 shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
                         <img
-                            ref={imageRef}
                             src={workspaceUiImage}
                             alt="Vadeo interface"
-                            className="w-full h-auto transition-all duration-300 ease-out"
-                            style={{
-                                opacity: scrollStyles.opacity,
-                                transform: scrollStyles.transform,
-                                willChange: 'opacity, transform'
-                            }}
+                            className="w-full h-auto"
                         />
                     </div>
 
@@ -211,15 +142,9 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
 
                     <div className="mt-10 overflow-hidden rounded-[18px] border border-white/10 bg-zinc-950 shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
                         <img
-                            ref={designImageRef}
                             src={designWorkflowImage}
                             alt="Design workflow in Vadeo"
-                            className="w-full h-auto transition-all duration-300 ease-out"
-                            style={{
-                                opacity: designScrollStyles.opacity,
-                                transform: designScrollStyles.transform,
-                                willChange: 'opacity, transform'
-                            }}
+                            className="w-full h-auto"
                         />
                     </div>
 
@@ -244,15 +169,9 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
 
                     <div className="mt-10 overflow-hidden rounded-[18px] border border-white/10 bg-zinc-950 shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
                         <img
-                            ref={generateImageRef}
                             src={generateWorkflowImage}
                             alt="Generate workflow in Vadeo"
-                            className="w-full h-auto transition-all duration-300 ease-out"
-                            style={{
-                                opacity: generateScrollStyles.opacity,
-                                transform: generateScrollStyles.transform,
-                                willChange: 'opacity, transform'
-                            }}
+                            className="w-full h-auto"
                         />
                     </div>
 
@@ -264,18 +183,12 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
 
                     <div className="mt-10 overflow-hidden rounded-[18px] border border-white/10 bg-zinc-950 shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
                         <video
-                            ref={generateVideoRef}
                             src={generateDemoVideo}
                             autoPlay
                             loop
                             muted
                             playsInline
-                            className="w-full h-auto transition-all duration-300 ease-out"
-                            style={{
-                                opacity: generateVideoScrollStyles.opacity,
-                                transform: generateVideoScrollStyles.transform,
-                                willChange: 'opacity, transform'
-                            }}
+                            className="w-full h-auto"
                         />
                     </div>
 

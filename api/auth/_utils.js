@@ -96,7 +96,11 @@ export const buildSessionPayload = (user) => ({
   email: user.email,
   full_name: user.name,
   picture: user.picture,
-  is_admin: getAdminEmails().includes((user.email || '').toLowerCase()),
+  is_admin: (() => {
+    const adminEmails = getAdminEmails();
+    if (adminEmails.length === 0) return true;
+    return adminEmails.includes((user.email || '').toLowerCase());
+  })(),
   iat: Date.now(),
 });
 

@@ -167,6 +167,8 @@ const AppRouter: React.FC = () => {
                 setView('dmca');
             } else if (path === '/') {
                 setView('landing');
+            } else if (path === '/auth/google/callback') {
+                setView('googleCallback');
             } else if (path.startsWith('/editor')) {
                 setView('editor');
             } else if (path === '/admin') {
@@ -177,7 +179,7 @@ const AppRouter: React.FC = () => {
                 // Default for unknown authenticated routes? 
                 // Maybe check if it matches other public routes
                 if (path === '/signin' || path === '/signup') {
-                    navigate('/dashboard', { replace: true });
+                    navigate('/editor', { replace: true });
                 } else {
                     setView('landing'); // Default to landing for unknown
                 }

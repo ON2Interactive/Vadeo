@@ -2,16 +2,20 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const hasSupabaseConfig = Boolean(supabaseUrl && supabaseAnonKey);
 
-if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Missing Supabase environment variables');
+if (!hasSupabaseConfig) {
+    console.warn('Supabase environment variables are missing. Auth, storage, and database-backed features are disabled.');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = hasSupabaseConfig
+    ? createClient(supabaseUrl, supabaseAnonKey)
+    : null;
 
 // Auth helper functions
 export const authHelpers = {
     async signUp(email: string, password: string, fullName: string) {
+        if (!supabase) return { data: null, error: new Error('Supabase is not configured') };
         const { data, error } = await supabase.auth.signUp({
             email,
             password,
@@ -25,6 +29,7 @@ export const authHelpers = {
     },
 
     async signIn(email: string, password: string) {
+        if (!supabase) return { data: null, error: new Error('Supabase is not configured') };
         const { data, error } = await supabase.auth.signInWithPassword({
             email,
             password,
@@ -33,16 +38,19 @@ export const authHelpers = {
     },
 
     async signOut() {
+        if (!supabase) return { error: new Error('Supabase is not configured') };
         const { error } = await supabase.auth.signOut();
         return { error };
     },
 
     async getCurrentUser() {
+        if (!supabase) return null;
         const { data: { user } } = await supabase.auth.getUser();
         return user;
     },
 
     async getSession() {
+        if (!supabase) return null;
         const { data: { session } } = await supabase.auth.getSession();
         return session;
     },
@@ -51,6 +59,7 @@ export const authHelpers = {
 // Database helper functions
 export const dbHelpers = {
     async getUserProfile(userId: string) {
+        if (!supabase) return { data: null, error: new Error('Supabase is not configured') };
         const { data, error } = await supabase
             .from('profiles')
             .select('*')
@@ -60,6 +69,7 @@ export const dbHelpers = {
     },
 
     async updateUserCredits(userId: string, credits: number) {
+        if (!supabase) return { data: null, error: new Error('Supabase is not configured') };
         const { data, error } = await supabase
             .from('profiles')
             .update({ credits, updated_at: new Date().toISOString() })
@@ -70,6 +80,7 @@ export const dbHelpers = {
     },
 
     async initUserProfile(userId: string) {
+        if (!supabase) return { data: null, error: null };
         // Check if profile exists
         const { data: existingProfile } = await supabase
             .from('profiles')
@@ -102,6 +113,7 @@ export const dbHelpers = {
     },
 
     async getUserProjects(userId: string) {
+        if (!supabase) return { data: [], error: null };
         const { data, error } = await supabase
             .from('projects')
             .select('*')
@@ -111,6 +123,7 @@ export const dbHelpers = {
     },
 
     async saveProject(userId: string, projectName: string, editorState: any, thumbnail?: string) {
+        if (!supabase) return { data: null, error: new Error('Supabase is not configured') };
         const { data, error } = await supabase
             .from('projects')
             .insert({
@@ -125,6 +138,7 @@ export const dbHelpers = {
     },
 
     async updateProject(projectId: string, projectName: string, editorState: any, thumbnail?: string) {
+        if (!supabase) return { data: null, error: new Error('Supabase is not configured') };
         const { data, error } = await supabase
             .from('projects')
             .update({
@@ -140,6 +154,7 @@ export const dbHelpers = {
     },
 
     async deleteProject(projectId: string) {
+        if (!supabase) return { error: new Error('Supabase is not configured') };
         const { error } = await supabase
             .from('projects')
             .delete()
@@ -148,6 +163,7 @@ export const dbHelpers = {
     },
 
     async getProject(projectId: string) {
+        if (!supabase) return { data: null, error: new Error('Supabase is not configured') };
         const { data, error } = await supabase
             .from('projects')
             .select('*')
@@ -178,6 +194,7 @@ export const dbHelpers = {
 // Storage helper functions
 export const storageHelpers = {
     async uploadVideo(userId: string, file: File, projectId: string) {
+        if (!supabase) return { data: null, error: new Error('Supabase is not configured') };
         const fileExt = file.name.split('.').pop();
         const fileName = `${userId}/${projectId}/${Date.now()}.${fileExt}`;
 
@@ -202,6 +219,7 @@ export const storageHelpers = {
     },
 
     async deleteVideo(filePath: string) {
+        if (!supabase) return { error: new Error('Supabase is not configured') };
         const { error } = await supabase.storage
             .from('project-media')
             .remove([filePath]);
@@ -210,6 +228,7 @@ export const storageHelpers = {
     },
 
     getPublicUrl(filePath: string) {
+        if (!supabase) return '';
         const { data } = supabase.storage
             .from('project-media')
             .getPublicUrl(filePath);
@@ -221,6 +240,7 @@ export const storageHelpers = {
 // Admin helper functions
 export const adminHelpers = {
     async getAllUsers() {
+        if (!supabase) return { data: [], error: null };
         const { data, error } = await supabase
             .from('profiles')
             .select('*')
@@ -229,6 +249,16 @@ export const adminHelpers = {
     },
 
     async getUserStats() {
+        if (!supabase) {
+            return {
+                data: {
+                    totalUsers: 0,
+                    totalCredits: 0,
+                    joinsToday: 0,
+                },
+                error: null,
+            };
+        }
         const { data: users, error } = await supabase
             .from('profiles')
             .select('credits, created_at');
@@ -257,6 +287,7 @@ export const adminHelpers = {
     },
 
     async updateUserCredits(userId: string, credits: number) {
+        if (!supabase) return { data: null, error: new Error('Supabase is not configured') };
         const { data, error } = await supabase
             .from('profiles')
             .update({ credits, updated_at: new Date().toISOString() })
@@ -267,6 +298,7 @@ export const adminHelpers = {
     },
 
     async deleteUser(userId: string) {
+        if (!supabase) return { error: new Error('Supabase is not configured') };
         // Use RPC to bypass RLS issues for admin deletes
         const { error } = await supabase.rpc('admin_delete_user', {
             target_user_id: userId
@@ -279,6 +311,7 @@ export const adminHelpers = {
     },
 
     async toggleAdminStatus(userId: string, isAdmin: boolean) {
+        if (!supabase) return { data: null, error: new Error('Supabase is not configured') };
         const { data, error } = await supabase
             .from('profiles')
             .update({ is_admin: isAdmin, updated_at: new Date().toISOString() })
@@ -289,6 +322,7 @@ export const adminHelpers = {
     },
 
     async isUserAdmin(userId: string) {
+        if (!supabase) return false;
         const { data, error } = await supabase
             .from('profiles')
             .select('is_admin')

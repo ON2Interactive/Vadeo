@@ -123,7 +123,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
 
   const hasGenerationAccess = DEV_BYPASS_CREDITS || currentPlan === 'standard' || currentPlan === 'premium';
   const hasPremiumAccess = DEV_BYPASS_CREDITS || currentPlan === 'premium';
-  const planLabel = DEV_BYPASS_CREDITS ? 'Premium Plan' : currentPlan === 'premium' ? 'Premium Plan' : currentPlan === 'standard' ? 'Standard Plan' : 'Starter Plan';
+  const planLabel = DEV_BYPASS_CREDITS ? 'Premium' : currentPlan === 'premium' ? 'Premium' : currentPlan === 'standard' ? 'Standard' : 'Starter';
 
   const applyPlan = (plan: PlanTier) => {
     setCurrentPlan(plan);

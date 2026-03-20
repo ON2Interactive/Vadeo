@@ -6,9 +6,6 @@ import { dbHelpers } from './lib/supabase';
 import { useRecaptcha } from './hooks/useRecaptcha';
 import heroBackgroundVideo from './Assets/HeroBG.mp4';
 import generateDemoVideo from './Assets/V-Demo-01.mp4';
-import designWorkflowImage from './Screenshots/Design-01.png';
-import generateWorkflowImage from './Screenshots/Generate.png';
-import workspaceUiImage from './Screenshots/UI.png';
 
 interface NewLandingPageProps {
     onStartEditing: () => void;
@@ -16,6 +13,9 @@ interface NewLandingPageProps {
 }
 
 const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCredits }) => {
+    const designWorkflowImage = '/Design-01.png';
+    const generateWorkflowImage = '/Generate.png';
+    const workspaceUiImage = '/UI.png';
     const [soonFormData, setSoonFormData] = useState({ name: '', email: '' });
     const [soonSubmitted, setSoonSubmitted] = useState(false);
     const { executeRecaptcha } = useRecaptcha();

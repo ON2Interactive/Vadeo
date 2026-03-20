@@ -127,3 +127,13 @@ Thumbs.db
 
 # Affinity temp lock files
 *.af~lock~
+
+# Local design/source folders
+Logos/
+Assets-01/
+Assets-02/
+BatchoCanvas/
+batchoCanvas/
+batchoVideo/
+batchovideo/
+Docs/

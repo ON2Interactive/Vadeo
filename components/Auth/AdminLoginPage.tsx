@@ -17,7 +17,6 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onSuccess }) => 
 
         try {
             await authHelpers.signInWithGoogle('/admin');
-            onSuccess();
         } catch (err) {
             console.error('Admin login error:', err);
             setError('Could not start Google admin sign-in.');

@@ -27,7 +27,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onSwitchToSignu
 
         try {
             await authHelpers.signInWithGoogle('/editor');
-            onSuccess();
         } catch (loginError: any) {
             setError(loginError?.message || 'Could not start Google sign-in.');
             setLoading(false);

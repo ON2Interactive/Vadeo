@@ -26,7 +26,6 @@ export const SignupPage: React.FC<SignupPageProps> = ({ onSuccess, onSwitchToLog
 
         try {
             await authHelpers.signInWithGoogle('/editor');
-            onSuccess();
         } catch (signupError: any) {
             console.error('Signup redirect error:', signupError);
             setError('Could not start Google sign-up.');

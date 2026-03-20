@@ -2,6 +2,7 @@ import React from 'react';
 import { Zap, Download, Sparkles, Crown, Layers } from 'lucide-react';
 import Navigation from './Navigation';
 import Footer from './Footer';
+import { beginStripeCheckout } from '../lib/stripeCheckout';
 
 interface PricingPageProps {
     onBuyCredits?: (planId: 'STARTER' | 'PRO' | 'BRAND') => void;
@@ -16,14 +17,13 @@ const PricingPage: React.FC<PricingPageProps> = ({ onBuyCredits }) => {
 
     // Fallback if not passed
     const handleBuyCredits = onBuyCredits || ((planId) => {
-        // Determine redirect based on plan
-        const planLink = {
-            'STARTER': 'https://buy.stripe.com/test_3cs3do4M85MfaQw288', // Example fallback
-            'PRO': 'https://buy.stripe.com/test_14k7pw7Wg2A75wc6oq',
-            'BRAND': 'https://buy.stripe.com/test_8wMbDIc8wcYv9UI6op'
-        }[planId];
-        if (planLink) window.location.href = planLink;
-        else window.location.href = '/signup';
+        beginStripeCheckout(planId, {
+            successPath: '/editor',
+            cancelPath: '/pricing',
+        }).catch((error) => {
+            console.error('Pricing checkout failed:', error);
+            window.location.href = '/signup';
+        });
     });
 
     return (

@@ -1,20 +1,18 @@
 
-/**
- * STRIPE CONFIGURATION (No-Server Method)
- * 
- * This method uses "Stripe Payment Links" which requires ZERO backend code.
- */
+export type StripePlanId = 'STARTER' | 'PRO' | 'BRAND';
 
 export const STRIPE_CONFIG = {
-  // Create subscription payment links in Stripe for each plan, then replace the placeholders below.
-  LINKS: {
-    STARTER: 'https://buy.stripe.com/aFabJ10jd8Zv04meloe3e00', // Starter subscription
-    PRO: 'https://buy.stripe.com/5kQcN5aXR5NjdVcb9ce3e01',     // Standard subscription
-    BRAND: 'https://buy.stripe.com/7sIdR92rl3Fbg3k4gj',        // Premium subscription
+  PRICE_IDS: {
+    STARTER: 'price_1TDA81PS7A6w1qKNbfSiBBDA',
+    PRO: 'price_1TDA9gPS7A6w1qKNjZmhivpd',
+    BRAND: 'price_1TDAAfPS7A6w1qKNJmziQDG6',
   },
 
-  // Legacy single-link key used by older upgrade modals. Pointing it at Standard by default.
-  PAYMENT_LINK: 'https://buy.stripe.com/5kQcN5aXR5NjdVcb9ce3e01',
+  PRODUCT_IDS: {
+    STARTER: 'prod_UBXCzARw94usRG',
+    PRO: 'prod_UBXEMlptPNWI6n',
+    BRAND: 'prod_UBXFFwaS1pbJdP',
+  },
 
   IS_LIVE: true,
 

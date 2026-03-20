@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Zap, Crown, Building2, Loader2, AlertCircle, ExternalLink, CheckCircle2 } from 'lucide-react';
 import { STRIPE_CONFIG } from '../../stripeConfig';
+import { beginStripeCheckout } from '../../lib/stripeCheckout';
 
 interface Props {
     onClose: () => void;
@@ -63,22 +64,14 @@ const CreditsModal: React.FC<Props> = ({ onClose, onSelectPlan }) => {
                 onClose();
             }, 1500);
         } else {
-            // Real Mode
-            const link = STRIPE_CONFIG.LINKS[pack.id as keyof typeof STRIPE_CONFIG.LINKS];
-            if (link) {
-                // Save pending purchase for notification on return
-                localStorage.setItem('pending_purchase', JSON.stringify({
-                    planName: pack.name,
-                    price: pack.price,
-                    billingPeriod: 'month',
-                    includedGenerations: pack.id === 'STARTER' ? 0 : 20,
-                    resolution: pack.id === 'PRO' ? '1080p' : pack.id === 'BRAND' ? '4K' : 'Workspace only'
-                }));
-                window.location.href = link;
-            } else {
-                alert("Payment link not configured.");
+            beginStripeCheckout(pack.id as 'STARTER' | 'PRO' | 'BRAND', {
+                successPath: '/editor',
+                cancelPath: '/editor',
+            }).catch((error) => {
+                console.error('Credits modal checkout failed:', error);
+                alert('Stripe checkout is not configured correctly.');
                 setLoadingTier(null);
-            }
+            });
         }
     };
 

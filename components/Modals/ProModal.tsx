@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { X, Crown, ShieldCheck, Sparkles, Loader2, AlertCircle, ExternalLink } from 'lucide-react';
 import { STRIPE_CONFIG } from '../../stripeConfig';
+import { beginStripeCheckout } from '../../lib/stripeCheckout';
 
 interface Props {
   onClose: () => void;
@@ -12,8 +13,7 @@ const ProModal: React.FC<Props> = ({ onClose, onUpgrade }) => {
   const [loading, setLoading] = useState(false);
   const premiumPlan = STRIPE_CONFIG.PLANS.BRAND;
 
-  // Check if a payment link is provided
-  const isConfigured = STRIPE_CONFIG.PAYMENT_LINK !== 'https://buy.stripe.com/test_your_custom_link_here' && STRIPE_CONFIG.IS_LIVE;
+  const isConfigured = STRIPE_CONFIG.IS_LIVE;
 
   const handleSubscribe = () => {
     setLoading(true);
@@ -26,8 +26,13 @@ const ProModal: React.FC<Props> = ({ onClose, onUpgrade }) => {
         onClose();
       }, 1500);
     } else {
-      // No-Server Mode: Just go to the Stripe-hosted checkout page
-      window.location.href = STRIPE_CONFIG.PAYMENT_LINK;
+      beginStripeCheckout('BRAND', {
+        successPath: '/editor',
+        cancelPath: '/editor',
+      }).catch((error) => {
+        console.error('Premium checkout failed:', error);
+        setLoading(false);
+      });
     }
   };
 
@@ -67,7 +72,7 @@ const ProModal: React.FC<Props> = ({ onClose, onUpgrade }) => {
                 <AlertCircle size={14} className="text-amber-500 shrink-0 mt-0.5" />
                 <div className="text-[10px] text-amber-200/70 font-medium leading-relaxed">
                   <span className="text-amber-400 font-bold block mb-0.5">PREVIEW MODE</span>
-                  Update <code className="bg-black/30 px-1">stripeConfig.ts</code> with a Stripe Payment Link to go live.
+                  Add <code className="bg-black/30 px-1">STRIPE_SECRET_KEY</code> in Vercel to go live.
                 </div>
               </div>
             )}
@@ -114,7 +119,7 @@ const ProModal: React.FC<Props> = ({ onClose, onUpgrade }) => {
               {loading ? 'Processing...' : isConfigured ? 'Checkout with Stripe' : 'Test Pro (Simulation)'}
             </button>
             <p className="text-[10px] text-zinc-600 text-center mt-4 px-4 leading-relaxed">
-              No server required. Payments are handled securely on Stripe's own website.
+              Payments are handled securely on Stripe Checkout.
             </p>
           </div>
         </div>

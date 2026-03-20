@@ -6,9 +6,10 @@ import { useRecaptcha } from '../../hooks/useRecaptcha';
 interface LoginPageProps {
     onSuccess: () => void;
     onSwitchToSignup: () => void;
+    redirectPath?: string;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onSwitchToSignup }) => {
+export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onSwitchToSignup, redirectPath = '/editor' }) => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const { executeRecaptcha } = useRecaptcha();
@@ -30,7 +31,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onSwitchToSignu
         }
 
         try {
-            await authHelpers.signInWithGoogle('/editor');
+            await authHelpers.signInWithGoogle(redirectPath);
         } catch (loginError: any) {
             setError(loginError?.message || 'Could not start Google sign-in.');
             setLoading(false);

@@ -9,7 +9,8 @@ import NewLandingPage from './NewLandingPage';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
 import { AdminLoginPage } from './components/Auth/AdminLoginPage';
 import { adminHelpers } from './lib/supabase';
-import { STRIPE_CONFIG } from './stripeConfig';
+import { type StripePlanId } from './stripeConfig';
+import { beginStripeCheckout } from './lib/stripeCheckout';
 import GoogleOAuthCallbackPage from './components/Auth/GoogleOAuthCallbackPage';
 
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -33,7 +34,8 @@ const AppRouter: React.FC = () => {
     const [currentProject, setCurrentProject] = useState<any>(null);
     const [isAdmin, setIsAdmin] = useState(false);
     const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
-    const [pendingPlan, setPendingPlan] = useState<string | null>(null);
+    const [pendingPlan, setPendingPlan] = useState<StripePlanId | null>(null);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -78,6 +80,28 @@ const AppRouter: React.FC = () => {
             navigate('/editor', { replace: true });
         }
     }, [isAdminAuthenticated]);
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const checkoutPlan = params.get('checkoutPlan');
+
+        if (!isAuthenticated || !checkoutPlan) {
+            return;
+        }
+
+        if (checkoutPlan !== 'STARTER' && checkoutPlan !== 'PRO' && checkoutPlan !== 'BRAND') {
+            navigate('/editor', { replace: true });
+            return;
+        }
+
+        beginStripeCheckout(checkoutPlan, {
+            successPath: '/editor',
+            cancelPath: '/pricing',
+        }).catch((error) => {
+            console.error('Failed to start checkout after sign-in:', error);
+            navigate('/pricing', { replace: true });
+        });
+    }, [isAuthenticated, location.search, navigate]);
 
     useEffect(() => {
         // Sync view with URL path
@@ -140,6 +164,7 @@ const AppRouter: React.FC = () => {
         }
 
         if (session) {
+            setIsAuthenticated(true);
             const adminStatus = await adminHelpers.isUserAdmin(session.user.id);
             setIsAdmin(adminStatus);
             setIsAdminAuthenticated(adminStatus);
@@ -185,6 +210,7 @@ const AppRouter: React.FC = () => {
                 }
             }
         } else {
+            setIsAuthenticated(false);
             if (path === '/admin') {
                 setView('admin');
             } else if (path === '/admin-login') {
@@ -240,20 +266,8 @@ const AppRouter: React.FC = () => {
     };
 
     const handleSignupSuccess = () => {
-        if (pendingPlan && STRIPE_CONFIG.LINKS[pendingPlan as keyof typeof STRIPE_CONFIG.LINKS]) {
-            // Redirect to Stripe if there was a pending plan
-            const planDetails = STRIPE_CONFIG.PLANS[pendingPlan as keyof typeof STRIPE_CONFIG.PLANS];
-            if (planDetails) {
-                localStorage.setItem('pending_purchase', JSON.stringify({
-                    planId: pendingPlan,
-                    planName: planDetails.name,
-                    price: planDetails.price,
-                    billingPeriod: planDetails.billingPeriod,
-                    includedGenerations: planDetails.includedGenerations,
-                    resolution: planDetails.resolution
-                }));
-            }
-            window.location.href = STRIPE_CONFIG.LINKS[pendingPlan as keyof typeof STRIPE_CONFIG.LINKS];
+        if (pendingPlan) {
+            navigate(`/editor?checkoutPlan=${pendingPlan}`, { replace: true });
         } else {
             navigate('/editor');
         }
@@ -280,24 +294,13 @@ const AppRouter: React.FC = () => {
         setCurrentProject(null);
     };
 
-    const handleBuyCredits = async (planId: string) => {
+    const handleBuyCredits = async (planId: StripePlanId) => {
         const session = await authHelpers.getSession();
         if (session) {
-            // User is logged in, go straight to Stripe
-            if (STRIPE_CONFIG.LINKS[planId as keyof typeof STRIPE_CONFIG.LINKS]) {
-                const planDetails = STRIPE_CONFIG.PLANS[planId as keyof typeof STRIPE_CONFIG.PLANS];
-                if (planDetails) {
-                    localStorage.setItem('pending_purchase', JSON.stringify({
-                        planId,
-                        planName: planDetails.name,
-                        price: planDetails.price,
-                        billingPeriod: planDetails.billingPeriod,
-                        includedGenerations: planDetails.includedGenerations,
-                        resolution: planDetails.resolution
-                    }));
-                }
-                window.location.href = STRIPE_CONFIG.LINKS[planId as keyof typeof STRIPE_CONFIG.LINKS];
-            }
+            await beginStripeCheckout(planId, {
+                successPath: '/editor',
+                cancelPath: location.pathname.startsWith('/editor') ? '/editor' : '/pricing',
+            });
         } else {
             // User not logged in, go to signup first
             setPendingPlan(planId);
@@ -406,6 +409,7 @@ const AppRouter: React.FC = () => {
             <LoginPage
                 onSuccess={handleLoginSuccess}
                 onSwitchToSignup={() => setView('signup')}
+                redirectPath={pendingPlan ? `/editor?checkoutPlan=${pendingPlan}` : '/editor'}
             />
         );
     }
@@ -415,6 +419,7 @@ const AppRouter: React.FC = () => {
             <SignupPage
                 onSuccess={handleSignupSuccess}
                 onSwitchToLogin={() => setView('login')}
+                redirectPath={pendingPlan ? `/editor?checkoutPlan=${pendingPlan}` : '/editor'}
             />
         );
     }

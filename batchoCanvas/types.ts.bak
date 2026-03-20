@@ -1,0 +1,110 @@
+
+export type AspectRatio =
+  | '1:1' | '2:3' | '3:2' | '3:4' | '4:3' | '4:5' | '5:4' | '9:16' | '16:9'
+  | '1.85:1 Flat' | '2.39:1 CinemaScope' | '21:9 UltraWide' | '1.43:1 IMAX';
+
+export interface Point {
+  x: number;
+  y: number;
+}
+
+export enum LayerType {
+  TEXT = 'TEXT',
+  RECT = 'RECT',
+  CIRCLE = 'CIRCLE',
+  LINE = 'LINE',
+  IMAGE = 'IMAGE',
+  POLYGON = 'POLYGON',
+  TRIANGLE = 'TRIANGLE',
+  STAR = 'STAR',
+}
+
+export interface BaseLayer {
+  id: string;
+  name: string; // Added explicit name for layers
+  type: LayerType;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  opacity: number;
+  visible?: boolean;
+  locked?: boolean;
+  blendMode?: string;
+}
+
+export interface TextLayer extends BaseLayer {
+  type: LayerType.TEXT;
+  text: string;
+  fontSize: number;
+  fontFamily: string;
+  fontWeight: string;
+  fill: string;
+  align: 'left' | 'center' | 'right';
+  letterSpacing: number;
+  lineHeight: number;
+}
+
+export interface ShapeLayer extends BaseLayer {
+  type: LayerType.RECT | LayerType.CIRCLE | LayerType.LINE | LayerType.POLYGON | LayerType.TRIANGLE | LayerType.STAR;
+  fill: string;
+  stroke: string;
+  strokeWidth: number;
+  cornerRadius?: number;
+  sides?: number; // for polygons
+  innerRadius?: number; // for stars
+}
+
+export interface ImageLayer extends BaseLayer {
+  type: LayerType.IMAGE;
+  src: string;
+  isBaseMedia?: boolean;
+  filter?: string; // Video effect preset
+  mediaType: 'image' | 'video';
+  // Video specific props
+  playing?: boolean;
+  loop?: boolean;
+  volume?: number;
+  currentTime?: number;
+  duration?: number; // Duration in seconds
+}
+
+export type Layer = TextLayer | ShapeLayer | ImageLayer;
+
+export interface Page {
+  id: string;
+  name: string;
+  aspectRatio: AspectRatio;
+  width: number;
+  height: number;
+  backgroundColor: string;
+  layers: Layer[];
+  thumbnail?: string;
+}
+
+export interface EditorState {
+  pages: Page[];
+  activePageId: string;
+  zoom: number;
+  pan: Point;
+  selectedLayerId: string | null;
+  history: Page[][];
+  historyIndex: number;
+  isPro?: boolean;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  pages: Page[];
+  updatedAt: number;
+  thumbnail?: string;
+}
+
+export interface ProjectMetadata {
+  id: string;
+  name: string;
+  updatedAt: number;
+  thumbnail?: string;
+}

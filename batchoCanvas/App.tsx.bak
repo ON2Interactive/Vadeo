@@ -1,0 +1,1152 @@
+
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { Stage, Layer as KonvaLayer, Rect, Line } from 'react-konva';
+import { v4 as uuidv4 } from 'uuid';
+import {
+  EditorState,
+  Page,
+  Layer,
+  LayerType,
+  AspectRatio,
+  Point,
+  TextLayer,
+  ShapeLayer,
+  ImageLayer,
+  Project
+} from './types';
+import {
+  ASPECT_RATIOS,
+  MAX_ZOOM,
+  MIN_ZOOM,
+  DEFAULT_PAGE_ID
+} from './constants';
+import Toolbar from './components/Toolbar/Toolbar';
+import PropertiesPanel from './components/Properties/PropertiesPanel';
+import CanvasElement from './components/Editor/CanvasElement';
+import ProjectGallery from './components/Editor/ProjectGallery';
+import ExportDialog, { ExportConfig } from './components/Editor/ExportDialog';
+import ProModal from './components/Modals/ProModal';
+import AIModal from './components/Modals/AIModal';
+import CreditsModal from './components/Modals/CreditsModal';
+import GridOverlay, { GridType } from './components/Editor/GridOverlay';
+
+
+import { aiService } from './aiService';
+import { dbHelpers, authHelpers, storageHelpers } from './lib/supabase';
+// import { db } from './db'; // Removing IDB dependency for Project saving
+import {
+  Download,
+  Undo2,
+  Redo2,
+  Maximize2,
+  Loader2,
+  ZoomIn,
+  ZoomOut,
+  Save,
+  Library,
+  CheckCircle2,
+  Crown,
+  Sparkles,
+  Wand2,
+  ChevronLeft,
+  Zap,
+  Grid
+} from 'lucide-react';
+
+interface AppProps {
+  initialProject?: any;
+  onBackToDashboard?: () => void;
+}
+
+const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
+  // --- Manage Body Scroll ---
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'auto';
+    };
+  }, []);
+
+  // --- Project Management State ---
+  const [projectId, setProjectId] = useState<string>(uuidv4());
+  const [projectName, setProjectName] = useState<string>('Untitled Design');
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<number | null>(null);
+  const [showGallery, setShowGallery] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showProModal, setShowProModal] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false);
+  const [aiLayerId, setAILayerId] = useState<string | null>(null);
+
+  // New State for Supabase Integration
+  const [userId, setUserId] = useState<string | null>(null);
+  const [credits, setCredits] = useState<number>(0);
+  const [showCreditsModal, setShowCreditsModal] = useState(false);
+  const [isNewProject, setIsNewProject] = useState(true);
+
+  const handleBackClick = () => {
+    if (onBackToDashboard) onBackToDashboard();
+  };
+
+  // Initialize User & Credits
+  useEffect(() => {
+    authHelpers.getCurrentUser().then(async (user) => {
+      if (user) {
+        setUserId(user.id);
+        // Initialize profile if needed (gets 50 free credits)
+        const { data } = await dbHelpers.initUserProfile(user.id);
+        if (data) {
+          setCredits(data.credits);
+        }
+      }
+    });
+  }, []);
+
+  // Initialize from Prop (Supabase Data)
+  useEffect(() => {
+    if (initialProject) {
+      setProjectId(initialProject.id);
+      setProjectName(initialProject.name || 'Untitled Project');
+
+      // Handle Supabase structure (editor_state) vs potential legacy structure
+      const loadedPages = initialProject.editor_state?.pages || initialProject.pages;
+
+      if (loadedPages) {
+        setEditorState(prev => ({
+          ...prev,
+          pages: loadedPages,
+          activePageId: loadedPages[0]?.id || DEFAULT_PAGE_ID,
+          history: [loadedPages],
+          historyIndex: 0
+        }));
+      }
+      setIsNewProject(false);
+    }
+  }, [initialProject]);
+
+
+  // --- Editor State ---
+  const [editorState, setEditorState] = useState<EditorState>(() => {
+    // ... existing init logic ...
+    const storedPro = localStorage.getItem('vd_pro_status') === 'true';
+
+    const initialPage: Page = {
+      id: DEFAULT_PAGE_ID,
+      name: 'Scene 1',
+      aspectRatio: '16:9',
+      width: ASPECT_RATIOS['16:9'].w,
+      height: ASPECT_RATIOS['16:9'].h,
+      backgroundColor: '#ffffff',
+      layers: [],
+    };
+
+    return {
+      pages: [initialPage],
+      activePageId: DEFAULT_PAGE_ID,
+      zoom: 0.1,
+      pan: { x: 0, y: 0 },
+      selectedLayerId: null,
+      history: [[initialPage]],
+      historyIndex: 0,
+      isPro: storedPro
+    };
+  });
+
+  // ... Tool & UI State ...
+  const [activeTool, setActiveTool] = useState<string>('select');
+  const [isExporting, setIsExporting] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [statusText, setStatusText] = useState<string>('');
+  const [exportProgress, setExportProgress] = useState(0);
+  const [isPanning, setIsPanning] = useState(false);
+  const [isSpacePressed, setIsSpacePressed] = useState(false);
+  const [activeGuides, setActiveGuides] = useState<{ x?: number, y?: number } | null>(null);
+  const [isCanvasEditing, setIsCanvasEditing] = useState(false);
+  const [activeGrid, setActiveGrid] = useState<GridType>('none');
+  const [showGridMenu, setShowGridMenu] = useState(false);
+
+  // AI State
+  const [aiMode, setAIMode] = useState<'motion' | 'edit_image' | 'edit_video' | null>(null);
+
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<any>(null);
+  const lastMousePos = useRef<Point>({ x: 0, y: 0 });
+  const thumbnailTimeoutRef = useRef<number | null>(null);
+
+  const activePage = editorState.pages.find(p => p.id === editorState.activePageId)!;
+
+  const handleUpgrade = () => {
+    localStorage.setItem('vd_pro_status', 'true');
+    setEditorState(prev => ({ ...prev, isPro: true }));
+  };
+
+  // --- Supabase Save Logic ---
+  const handleSaveProject = useCallback(async () => {
+    if (!userId) {
+      console.warn("Cannot save: No authenticated user");
+      alert("Cannot save: You are not logged in. Please log in to save your work.");
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      const thumbnail = editorState.pages[0]?.thumbnail;
+
+      let result;
+      if (isNewProject) {
+        result = await dbHelpers.saveProject(userId, projectName, editorState, thumbnail);
+        if (result.data) {
+          setProjectId(result.data.id);
+          setIsNewProject(false);
+          console.log("Project created:", result.data.id);
+        }
+      } else {
+        result = await dbHelpers.updateProject(projectId, projectName, editorState, thumbnail);
+        console.log("Project updated:", projectId);
+      }
+
+      if (result.error) throw result.error;
+      setLastSaved(Date.now());
+    } catch (err) {
+      console.error('Failed to save to Supabase:', err);
+      // Fallback or error notification
+      alert(`Failed to save project: ${err.message || 'Unknown error'}`);
+    } finally {
+      setTimeout(() => setIsSaving(false), 800);
+    }
+  }, [userId, projectId, projectName, editorState, isNewProject]);
+
+  // --- Autosave Implementation (30s) ---
+  // Use a ref to access latest state in interval without resetting timer
+  const autosaveRef = useRef({ userId, projectId, projectName, editorState, isNewProject });
+  useEffect(() => {
+    autosaveRef.current = { userId, projectId, projectName, editorState, isNewProject };
+  }, [userId, projectId, projectName, editorState, isNewProject]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const current = autosaveRef.current;
+      if (!current.userId) return;
+
+      // Silent save logic (duplicated to avoid prop drilling / complex callback deps)
+      const performAutosave = async () => {
+        // Prevent auto-saving if the project hasn't been manually saved at least once
+        if (current.isNewProject) {
+          console.log("Autosave skipped: Project is new and unsaved.");
+          return;
+        }
+
+        try {
+          // setIsSaving(true); // Optional: skip spinner for autosave
+          const thumbnail = current.editorState.pages[0]?.thumbnail;
+
+          // Since we return early for new projects, we only need update logic here
+          await dbHelpers.updateProject(current.projectId, current.projectName, current.editorState, thumbnail);
+
+          setLastSaved(Date.now());
+          console.log("Autosave complete.");
+        } catch (e) { console.error("Autosave error:", e); }
+        // finally {setIsSaving(false); }
+      };
+
+      console.log("Triggering Autosave Check...");
+      performAutosave();
+
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(timer);
+  }, []); // Run once on mount
+
+  const handleLoadProject = async (id: string) => {
+    try {
+      const { data: project, error } = await dbHelpers.getProject(id);
+      if (project) {
+        setProjectId(project.id);
+        setProjectName(project.name);
+
+        // Handle Supabase structure (editor_state)
+        const loadedPages = project.editor_state?.pages || project.pages;
+
+        if (loadedPages) {
+          setEditorState(prev => ({
+            ...prev,
+            pages: loadedPages,
+            activePageId: loadedPages[0]?.id || DEFAULT_PAGE_ID,
+            selectedLayerId: null,
+            history: [loadedPages],
+            historyIndex: 0
+          }));
+        }
+        setShowGallery(false);
+      }
+    } catch (err) {
+      console.error('Failed to load:', err);
+    }
+  };
+
+  const pushToHistory = useCallback((newPages: Page[]) => {
+    setEditorState(prev => {
+      const newHistory = prev.history.slice(0, prev.historyIndex + 1);
+      newHistory.push([...newPages]);
+      return {
+        ...prev,
+        pages: newPages,
+        history: newHistory,
+        historyIndex: newHistory.length - 1
+      };
+    });
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    if (editorState.historyIndex > 0) {
+      setEditorState(prev => ({
+        ...prev,
+        pages: prev.history[prev.historyIndex - 1],
+        historyIndex: prev.historyIndex - 1,
+        selectedLayerId: null
+      }));
+    }
+  }, [editorState.historyIndex]);
+
+  const handleRedo = useCallback(() => {
+    if (editorState.historyIndex < editorState.history.length - 1) {
+      setEditorState(prev => ({
+        ...prev,
+        pages: prev.history[prev.historyIndex + 1],
+        historyIndex: prev.historyIndex + 1,
+        selectedLayerId: null
+      }));
+    }
+  }, [editorState.historyIndex, editorState.history.length]);
+
+  const updateActivePage = useCallback((updates: Partial<Page>) => {
+    const newPages = editorState.pages.map(p =>
+      p.id === editorState.activePageId ? { ...p, ...updates } : p
+    );
+    pushToHistory(newPages);
+  }, [editorState.activePageId, editorState.pages, pushToHistory]);
+
+  const handleAddElement = useCallback((type: LayerType | 'IMAGE_UPLOAD' | 'VIDEO_UPLOAD') => {
+    if (type === 'IMAGE_UPLOAD' || type === 'VIDEO_UPLOAD') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = type === 'IMAGE_UPLOAD' ? 'image/*' : 'video/*';
+      input.onchange = async (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (file) {
+          const url = URL.createObjectURL(file);
+          const isVideo = type === 'VIDEO_UPLOAD';
+
+          if (isVideo) {
+            const tempVideo = document.createElement('video');
+            tempVideo.src = url;
+            tempVideo.onloadedmetadata = () => {
+              const duration = tempVideo.duration;
+              const naturalWidth = tempVideo.videoWidth || 800;
+              const naturalHeight = tempVideo.videoHeight || 450;
+              const aspectRatio = naturalWidth / naturalHeight;
+
+              // Scale down if too big, max width 800
+              const width = Math.min(800, naturalWidth);
+              const height = width / aspectRatio;
+
+              const newLayerId = uuidv4();
+
+              const newLayer: ImageLayer = {
+                id: newLayerId,
+                name: 'Video',
+                type: LayerType.IMAGE,
+                x: 100,
+                y: 100,
+                width: width,
+                height: height,
+                rotation: 0,
+                opacity: 1,
+                src: url, // Start with Blob URL for instant preview
+                mediaType: 'video',
+                playing: true,
+                loop: true,
+                volume: 1,
+                currentTime: 0,
+                duration: duration,
+                visible: true,
+                locked: false
+              };
+              updateActivePage({ layers: [...activePage.layers, newLayer] });
+              setEditorState(prev => ({ ...prev, selectedLayerId: newLayer.id }));
+
+              // Background Upload to Supabase
+              if (userId) {
+                console.log('☁️ Starting background upload for video...');
+                storageHelpers.uploadVideo(userId, file, projectId).then(({ data, error }) => {
+                  if (error) {
+                    console.error('❌ Background upload failed:', error);
+                    alert("Video upload failed. It may disappear on refresh. Please use a smaller file or check your connection.");
+                  } else if (data) {
+                    console.log('✅ Background upload complete. Swapping URL.', data.url);
+                    setEditorState(currentState => {
+                      const currentActivePage = currentState.pages.find(p => p.id === currentState.activePageId);
+                      if (!currentActivePage) return currentState;
+
+                      const updatedLayers = currentActivePage.layers.map(l =>
+                        l.id === newLayerId ? { ...l, src: data.url } : l
+                      );
+
+                      const newPages = currentState.pages.map(p =>
+                        p.id === currentState.activePageId ? { ...p, layers: updatedLayers } : p
+                      );
+
+                      return {
+                        ...currentState,
+                        pages: newPages
+                      };
+                    });
+                  }
+                });
+              } else {
+                console.warn("⚠️ User not logged in. Video will not be saved to cloud.");
+              }
+            };
+          } else {
+            // IMAGE UPLOAD - Fix Aspect Ratio
+            const img = new Image();
+            img.src = url;
+            img.onload = () => {
+              const naturalWidth = img.naturalWidth || 800;
+              const naturalHeight = img.naturalHeight || 450;
+              const aspectRatio = naturalWidth / naturalHeight;
+
+              // Scale down if too big, max width 800, but keep aspect ratio
+              const width = Math.min(800, naturalWidth);
+              const height = width / aspectRatio;
+
+              const newLayer: ImageLayer = {
+                id: uuidv4(),
+                name: 'Image',
+                type: LayerType.IMAGE,
+                x: 100,
+                y: 100,
+                width: width,
+                height: height,
+                rotation: 0,
+                opacity: 1,
+                src: url,
+                mediaType: 'image',
+                visible: true,
+                locked: false
+              };
+              updateActivePage({ layers: [...activePage.layers, newLayer] });
+              setEditorState(prev => ({ ...prev, selectedLayerId: newLayer.id }));
+            };
+          }
+        }
+      };
+      input.click();
+      return;
+    }
+
+    let newLayer: Layer;
+    const base = { id: uuidv4(), x: 200, y: 200, rotation: 0, opacity: 1, width: 400, height: 400, visible: true, locked: false };
+
+    switch (type) {
+      case LayerType.TEXT:
+        newLayer = {
+          ...base, name: 'Text', type: LayerType.TEXT, text: 'New Text', width: 600,
+          fontSize: 60, fontFamily: 'Inter', fontWeight: 'bold', fill: '#000000',
+          align: 'center', lineHeight: 1.2, letterSpacing: 0
+        } as TextLayer;
+        break;
+      case LayerType.RECT:
+        newLayer = { ...base, name: 'Rectangle', type: LayerType.RECT, fill: '#6366f1', stroke: '#4f46e5', strokeWidth: 4, cornerRadius: 8 } as ShapeLayer;
+        break;
+      case LayerType.CIRCLE:
+        newLayer = { ...base, name: 'Circle', type: LayerType.CIRCLE, fill: '#ec4899', stroke: '#db2777', strokeWidth: 4 } as ShapeLayer;
+        break;
+      case LayerType.STAR:
+        newLayer = { ...base, name: 'Star', type: LayerType.STAR, fill: '#8b5cf6', stroke: '#7c3aed', strokeWidth: 4, sides: 5, innerRadius: 50 } as ShapeLayer;
+        break;
+      case LayerType.TRIANGLE:
+        newLayer = { ...base, name: 'Triangle', type: LayerType.TRIANGLE, fill: '#10b981', stroke: '#059669', strokeWidth: 4, sides: 3 } as ShapeLayer;
+        break;
+      case LayerType.POLYGON:
+        newLayer = { ...base, name: 'Polygon', type: LayerType.POLYGON, fill: '#f59e0b', stroke: '#d97706', strokeWidth: 4, sides: 6 } as ShapeLayer;
+        break;
+      case LayerType.LINE:
+        newLayer = { ...base, name: 'Line', type: LayerType.RECT, width: 400, height: 4, fill: '#6366f1', stroke: '#4f46e5', strokeWidth: 0, cornerRadius: 0 } as ShapeLayer;
+        break;
+      default: return;
+    }
+    updateActivePage({ layers: [...activePage.layers, newLayer] });
+    setEditorState(prev => ({ ...prev, selectedLayerId: newLayer.id }));
+    setActiveTool('select');
+  }, [activePage, updateActivePage]);
+
+  const updateLayer = useCallback((id: string, updates: Partial<Layer>) => {
+    const newLayers = activePage.layers.map(l => l.id === id ? { ...l, ...updates } : l);
+    updateActivePage({ layers: newLayers as Layer[] });
+  }, [activePage.layers, updateActivePage]);
+
+  const duplicateLayer = useCallback((id: string) => {
+    const source = activePage.layers.find(l => l.id === id);
+    if (!source) return;
+    const newLayer = { ...source, id: uuidv4(), name: `${source.name} Copy`, x: source.x + 20, y: source.y + 20 };
+    updateActivePage({ layers: [...activePage.layers, newLayer] });
+    setEditorState(prev => ({ ...prev, selectedLayerId: newLayer.id }));
+  }, [activePage.layers, updateActivePage]);
+
+  const reorderLayers = useCallback((newLayers: Layer[]) => {
+    updateActivePage({ layers: newLayers });
+  }, [updateActivePage]);
+
+  const handleWheel = (e: React.WheelEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      const zoomSpeed = 0.001;
+      const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, editorState.zoom - e.deltaY * zoomSpeed));
+      setEditorState(prev => ({ ...prev, zoom: newZoom }));
+    } else {
+      setEditorState(prev => ({
+        ...prev,
+        pan: { x: prev.pan.x - e.deltaX, y: prev.pan.y - e.deltaY }
+      }));
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const isBackgroundClick = e.target === workspaceRef.current;
+    if (isBackgroundClick) {
+      setEditorState(prev => ({ ...prev, selectedLayerId: null }));
+      if (document.activeElement instanceof HTMLTextAreaElement) {
+        document.activeElement.blur();
+      }
+    }
+    if (activeTool === 'hand' || isSpacePressed || e.button === 1 || isBackgroundClick) {
+      setIsPanning(true);
+      lastMousePos.current = { x: e.clientX, y: e.clientY };
+      e.preventDefault();
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isPanning) {
+      const dx = e.clientX - lastMousePos.current.x;
+      const dy = e.clientY - lastMousePos.current.y;
+      setEditorState(prev => ({ ...prev, pan: { x: prev.pan.x + dx, y: prev.pan.y + dy } }));
+      lastMousePos.current = { x: e.clientX, y: e.clientY };
+    }
+  };
+
+  const handleMouseUp = () => setIsPanning(false);
+
+  useEffect(() => {
+    if (thumbnailTimeoutRef.current) window.clearTimeout(thumbnailTimeoutRef.current);
+    thumbnailTimeoutRef.current = window.setTimeout(() => {
+      if (stageRef.current) {
+        const dataURL = stageRef.current.toDataURL({ pixelRatio: 0.1 });
+        setEditorState(prev => ({
+          ...prev,
+          pages: prev.pages.map(p => p.id === activePage.id ? { ...p, thumbnail: dataURL } : p)
+        }));
+      }
+    }, 1000);
+    return () => { if (thumbnailTimeoutRef.current) window.clearTimeout(thumbnailTimeoutRef.current); };
+  }, [activePage.layers, activePage.backgroundColor, activePage.id]);
+
+  const handleZoomIn = () => setEditorState(prev => ({ ...prev, zoom: Math.min(MAX_ZOOM, prev.zoom + 0.1) }));
+  const handleZoomOut = () => setEditorState(prev => ({ ...prev, zoom: Math.max(MIN_ZOOM, prev.zoom - 0.1) }));
+
+  const centerWorkspace = useCallback(() => {
+    if (!workspaceRef.current) return;
+    const width = workspaceRef.current.offsetWidth;
+    const height = workspaceRef.current.offsetHeight;
+    if (width === 0 || height === 0) return;
+
+    const padding = 120;
+    const availableW = width - padding;
+    const availableH = height - padding;
+    const zoomW = availableW / activePage.width;
+    const zoomH = availableH / activePage.height;
+    const targetZoom = Math.min(zoomW, zoomH, 1.0);
+
+    setEditorState(prev => ({
+      ...prev,
+      zoom: targetZoom,
+      pan: {
+        x: (width - activePage.width * targetZoom) / 2,
+        y: (height - activePage.height * targetZoom) / 2
+      }
+    }));
+  }, [activePage.width, activePage.height]);
+
+  useEffect(() => {
+    if (!workspaceRef.current) return;
+    const container = workspaceRef.current;
+    const observer = new ResizeObserver(() => {
+      centerWorkspace();
+    });
+    observer.observe(container);
+    const timer = setTimeout(centerWorkspace, 100);
+    return () => {
+      observer.disconnect();
+      clearTimeout(timer);
+    };
+  }, [centerWorkspace]);
+
+  // Center workspace whenever project ID changes (Load or New Project)
+  useEffect(() => {
+    // Small delay to ensure DOM and State are ready
+    const timer = setTimeout(() => {
+      centerWorkspace();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [projectId, centerWorkspace]);
+
+  /* --- AI GENERATION LOGIC --- */
+
+  const handleTriggerAIVideo = (layerId: string) => {
+    setAILayerId(layerId);
+    setAIMode('edit_image');
+    setShowAIModal(true);
+  };
+
+  const handleConfirmAI = async (prompt: string, useSimulation: boolean = false) => {
+    if (!aiLayerId) return;
+    setShowAIModal(false);
+    const layer = activePage.layers.find(l => l.id === aiLayerId) as ImageLayer;
+    if (!layer) return;
+
+    // Credit Check
+    const COST = 10;
+    if (credits < COST && !useSimulation) {
+      alert("Not enough credits! Please purchase more.");
+      setShowCreditsModal(true);
+      return;
+    }
+
+    setIsGenerating(true);
+    setStatusText(useSimulation ? "Running Neural Simulation..." : "Contacting Nano Banana...");
+
+    try {
+      let resultUrl = '';
+
+      if (useSimulation) {
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        resultUrl = layer.src;
+      } else {
+        // Real AI Execution
+
+        // 1. Deduct Credits
+        if (userId) {
+          const newCredits = credits - COST;
+          setCredits(newCredits);
+          // Fire and forget DB update
+          dbHelpers.updateUserCredits(userId, newCredits).catch(console.error);
+        }
+
+        // 2. Fetch Source Image
+        setStatusText("Uploading Source...");
+        const response = await fetch(layer.src);
+        const blob = await response.blob();
+
+        // 3. Calculate Aspect Ratio
+        // Simple approximation
+        const ratio = layer.width / layer.height;
+        let aspectRatio = "1:1";
+        if (ratio > 1.7) aspectRatio = "16:9";
+        else if (ratio < 0.6) aspectRatio = "9:16";
+        else if (ratio > 1.3) aspectRatio = "4:3";
+        else if (ratio < 0.8) aspectRatio = "3:4";
+
+        // 4. Call AI Service
+        setStatusText("Nano Banana Editors Working...");
+        // const resultBlob = await aiService.generateNanoBananaImage(blob, prompt, aspectRatio);
+        console.warn("Nano Banana AI Service not implemented yet.");
+        setStatusText("AI Feature Disabled");
+        setIsGenerating(false);
+        return;
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(`AI Generation failed: ${err.message}`);
+    } finally {
+      setIsGenerating(false);
+      setAILayerId(null);
+      setAIMode(null);
+    }
+  };
+
+  /* --- EXPORT LOGIC --- */
+
+
+  const executeExport = async (config: ExportConfig) => {
+    if (!stageRef.current) return;
+    try {
+      console.log('🎬 Export started:', config);
+      setIsExporting(true);
+      setExportProgress(0);
+      setStatusText("Initializing Export...");
+
+      // Allow React to re-render and hide the grid
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const stage = stageRef.current;
+
+      if (config.format === 'png') {
+        const pixelRatio = config.targetWidth / activePage.width;
+        const uri = stage.toDataURL({ pixelRatio });
+        const link = document.createElement('a');
+        link.download = `${projectName.replace(/\s+/g, '-')}-${config.label}.png`;
+        link.href = uri;
+        link.click();
+        setIsExporting(false);
+        console.log('✅ PNG export complete');
+        return;
+      }
+
+      console.log('📹 Starting video export...');
+      setStatusText("Synchronizing Frames...");
+
+      // Reset all videos to start
+      const seekLayers = activePage.layers.map(l => {
+        if (l.type === LayerType.IMAGE && (l as ImageLayer).mediaType === 'video') return { ...l, currentTime: 0, playing: false };
+        return l;
+      });
+      setEditorState(prev => ({ ...prev, pages: prev.pages.map(p => p.id === activePage.id ? { ...p, layers: seekLayers as Layer[] } : p) }));
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log('✅ Videos synchronized');
+
+      // Get canvas WITHOUT resizing stage (Chrome issue)
+      const canvas = stage.container().querySelector('canvas');
+      if (!canvas) throw new Error("Canvas missing");
+      console.log('📊 Canvas size:', canvas.width, 'x', canvas.height);
+
+      const stream = canvas.captureStream(30);
+      console.log('📹 Stream created, tracks:', stream.getTracks().length);
+
+      const mimeType = MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : 'video/webm';
+      console.log('📹 Using MIME type:', mimeType);
+
+      const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: config.targetWidth > 2000 ? 25000000 : 8000000 });
+      const chunks: Blob[] = [];
+
+      recorder.ondataavailable = (e) => {
+        console.log('📦 Data chunk received:', e.data.size, 'bytes');
+        chunks.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        console.log('🛑 Recorder stopped, total chunks:', chunks.length);
+        const blob = new Blob(chunks, { type: mimeType });
+        console.log('📦 Final blob size:', blob.size, 'bytes');
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = `${projectName.replace(/\s+/g, '-')}-${config.label}.${mimeType.includes('mp4') ? 'mp4' : 'webm'}`;
+        link.href = url;
+        link.click();
+        setIsExporting(false);
+        console.log('✅ Export complete!');
+      };
+
+      setStatusText("Recording Scene...");
+      recorder.start(100); // Request data every 100ms
+      console.log('🎬 Recording started with 100ms timeslice');
+
+      // Start playing videos
+      const playLayers = seekLayers.map(l => {
+        if (l.type === LayerType.IMAGE && (l as ImageLayer).mediaType === 'video') { const { currentTime, ...rest } = l as ImageLayer; return { ...rest, playing: true }; }
+        return l;
+      });
+      setEditorState(prev => ({ ...prev, pages: prev.pages.map(p => p.id === activePage.id ? { ...p, layers: playLayers as Layer[] } : p) }));
+      console.log('▶️ Videos playing');
+
+      const duration = config.duration;
+      let elapsed = 0;
+      let isRecording = true;
+
+      // CRITICAL: Force continuous canvas redraw for Chrome MediaRecorder
+      // Chrome needs active canvas updates to capture frames
+      const forceRedraw = () => {
+        if (!isRecording) return;
+
+        // Force Konva to redraw the canvas
+        stage.batchDraw();
+
+        requestAnimationFrame(forceRedraw);
+      };
+
+      // Start the continuous redraw loop
+      requestAnimationFrame(forceRedraw);
+      console.log('🔄 Continuous redraw started');
+
+      const timer = setInterval(() => {
+        elapsed += 100;
+        setExportProgress(Math.min(100, (elapsed / duration) * 100));
+        if (elapsed >= duration) {
+          clearInterval(timer);
+          isRecording = false; // Stop the redraw loop
+          console.log('⏱️ Duration reached, stopping recorder');
+          recorder.stop();
+        }
+      }, 100);
+    } catch (err) {
+      console.error('❌ Export failed:', err);
+      setIsExporting(false);
+      alert("Export failed.");
+    }
+  };
+
+  const handleConfirmExport = (config: ExportConfig) => {
+    setShowExportDialog(false);
+    executeExport(config);
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isInputActive = document.activeElement?.tagName === 'INPUT' ||
+        document.activeElement?.tagName === 'TEXTAREA' ||
+        isCanvasEditing;
+
+      if (e.code === 'Space' && !isInputActive) {
+        setIsSpacePressed(true);
+        e.preventDefault();
+      }
+
+      if (!isInputActive) {
+        if (e.key.toLowerCase() === 'v') setActiveTool('select');
+        if (e.key.toLowerCase() === 'h') setActiveTool('hand');
+      }
+
+      if ((e.metaKey || e.ctrlKey) && e.key === '0') {
+        e.preventDefault();
+        centerWorkspace();
+      }
+
+      if (isInputActive) return;
+
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z') { e.preventDefault(); if (e.shiftKey) handleRedo(); else handleUndo(); }
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); handleSaveProject(); }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'd') { e.preventDefault(); if (editorState.selectedLayerId) duplicateLayer(editorState.selectedLayerId); }
+
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        if (editorState.selectedLayerId) {
+          const newLayers = activePage.layers.filter(l => l.id !== editorState.selectedLayerId);
+          updateActivePage({ layers: newLayers });
+          setEditorState(prev => ({ ...prev, selectedLayerId: null }));
+        }
+      }
+    };
+    const handleKeyUp = (e: KeyboardEvent) => { if (e.code === 'Space') setIsSpacePressed(false); };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => { window.removeEventListener('keydown', handleKeyDown); window.removeEventListener('keyup', handleKeyUp); };
+  }, [editorState.selectedLayerId, activePage.layers, updateActivePage, handleUndo, handleRedo, duplicateLayer, projectName, projectId, centerWorkspace, isCanvasEditing]);
+
+  const hasVideo = activePage.layers.some(l => l.type === LayerType.IMAGE && (l as ImageLayer).mediaType === 'video');
+  const videoLayers = activePage.layers.filter(l => l.type === LayerType.IMAGE && (l as ImageLayer).mediaType === 'video') as ImageLayer[];
+  const maxVideoDuration = videoLayers.length > 0 ? Math.max(...videoLayers.map(l => l.duration || 10)) : 10;
+
+  const handleCanvasEditingToggle = (editing: boolean) => {
+    setIsCanvasEditing(editing);
+    if (editing) {
+      setActiveTool('select');
+    }
+  };
+
+
+  /* --- NEW PROJECT HANDLER --- */
+  const handleCreateNewProject = () => {
+    // Reset to a clean state
+    setProjectId(uuidv4());
+    setProjectName('Untitled Design');
+    setIsNewProject(true); // Enable new project state so it doesn't auto-save immediately
+    setLastSaved(null);
+
+    const initialPage: Page = {
+      id: DEFAULT_PAGE_ID,
+      name: 'Scene 1',
+      aspectRatio: '16:9',
+      width: ASPECT_RATIOS['16:9'].w,
+      height: ASPECT_RATIOS['16:9'].h,
+      backgroundColor: '#ffffff',
+      layers: [],
+    };
+
+    setEditorState({
+      pages: [initialPage],
+      activePageId: DEFAULT_PAGE_ID,
+      zoom: 0.1,
+      pan: { x: 0, y: 0 },
+      selectedLayerId: null,
+      history: [[initialPage]],
+      historyIndex: 0,
+      isPro: editorState.isPro
+    });
+
+    setShowGallery(false);
+  };
+
+  return (
+    <div className="fixed inset-0 flex flex-col bg-zinc-950 text-zinc-100 overflow-hidden select-none z-[100]">
+      {showGallery && (
+        <ProjectGallery
+          onClose={() => setShowGallery(false)}
+          onLoadProject={handleLoadProject}
+          onNewProject={handleCreateNewProject}
+        />
+      )}
+      {showExportDialog && <ExportDialog onClose={() => setShowExportDialog(false)} onConfirm={handleConfirmExport} aspectRatio={activePage.aspectRatio} currentWidth={activePage.width} currentHeight={activePage.height} hasVideo={hasVideo} suggestedDuration={maxVideoDuration} isPro={editorState.isPro} onShowPro={() => setShowProModal(true)} />}
+      {showProModal && <ProModal onClose={() => setShowProModal(false)} onUpgrade={handleUpgrade} />}
+      {showAIModal && <AIModal onClose={() => setShowAIModal(false)} onGenerate={handleConfirmAI} />}
+
+      {showCreditsModal && (
+        <CreditsModal
+          onClose={() => setShowCreditsModal(false)}
+          onPurchase={(amount, reset = false) => {
+            if (reset) {
+              setCredits(amount);
+              if (userId) dbHelpers.updateUserCredits(userId, amount);
+            } else {
+              setCredits(prev => {
+                const newVal = prev + amount;
+                if (userId) dbHelpers.updateUserCredits(userId, newVal);
+                return newVal;
+              });
+            }
+            setShowCreditsModal(false);
+          }}
+        />
+      )}
+
+      {/* AI LOADING OVERLAY */}
+      {isGenerating && (
+        <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="flex flex-col items-center gap-6 p-8 bg-zinc-900/90 border border-white/10 rounded-3xl shadow-2xl max-w-sm text-center">
+            <div className="relative">
+              <div className="w-16 h-16 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Sparkles size={20} className="text-white animate-pulse" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-white tracking-tight">Creating Magic</h3>
+              <p className="text-sm text-zinc-400">{statusText || "Processing..."}</p>
+            </div>
+          </div>
+        </div>
+      )}
+      {(isExporting || isGenerating) && (
+        <div className="fixed inset-0 bg-black/80 z-[300] flex flex-col items-center justify-center gap-6 backdrop-blur-md animate-in fade-in duration-300">
+          {isGenerating ? (
+            <div className="relative">
+              <div className="w-24 h-24 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin shadow-2xl shadow-blue-500/20" />
+              <div className="absolute inset-0 flex items-center justify-center text-blue-400">
+                <Wand2 size={32} className="animate-pulse" />
+              </div>
+            </div>
+          ) : (
+            <div className="w-64 h-2 bg-zinc-800 rounded-full overflow-hidden">
+              <div className="h-full bg-blue-600 transition-all duration-300" style={{ width: `${exportProgress}%` }} />
+            </div>
+          )}
+          <div className="flex flex-col items-center gap-2">
+            <p className="text-sm font-black text-white uppercase tracking-[0.2em] animate-pulse">
+              {statusText}
+            </p>
+            {isExporting && <span className="text-[10px] text-zinc-500 font-mono">{Math.round(exportProgress)}% COMPLETE</span>}
+          </div>
+        </div>
+      )}
+
+      {/* Header Bar */}
+      <div className="h-16 bg-[#0f0f11] border-b border-zinc-800 flex items-center px-4 justify-between select-none z-50">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handleBackClick}
+            className="p-2 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors"
+            title="Back to Dashboard"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <div className="flex flex-col">
+            <input
+              type="text"
+              value={projectName}
+              onChange={(e) => setProjectName(e.target.value)}
+              className="bg-transparent text-white font-medium focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-1 -ml-1 w-48"
+              placeholder="Untitled Project"
+            />
+            <span className="text-[10px] text-zinc-500">
+              {lastSaved ? `Saved ${new Date(lastSaved).toLocaleTimeString()}` : 'Unsaved changes'}
+            </span>
+          </div>
+          {/* Credits Display */}
+          <div className="h-8 w-px bg-zinc-800 mx-2" />
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border border-zinc-800 bg-zinc-900/50 ${credits <= 0 ? 'text-red-400 border-red-500/30 bg-red-500/10' : 'text-zinc-400'}`}>
+            <Zap size={14} className={credits <= 0 ? 'text-red-500' : 'text-zinc-500'} />
+            <span className="text-xs font-bold">{credits} Credits</span>
+          </div>
+
+          {/* Pulse Buy Button if Out of Credits */}
+          {credits <= 0 && (
+            <button
+              onClick={() => setShowCreditsModal(true)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-[0_0_15px_rgba(37,99,235,0.5)] animate-pulse transition-all"
+            >
+              <Crown size={14} />
+              Buy Credits
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 ml-2">
+            <button onClick={handleSaveProject} disabled={isSaving} className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800 text-sm font-bold text-zinc-300 rounded-lg transition-all border border-zinc-700/50">
+              {isSaving ? <Loader2 size={16} className="animate-spin" /> : lastSaved ? <CheckCircle2 size={16} className="text-emerald-500" /> : <Save size={16} />}
+              {isSaving ? 'Saving' : lastSaved ? 'Saved' : 'Save'}
+            </button>
+            <button onClick={() => setShowGallery(true)} className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-sm font-bold text-zinc-300 rounded-lg transition-all border border-zinc-700/50">
+              <Library size={16} /> Open
+            </button>
+          </div>
+          <div className="flex items-center gap-1 ml-4">
+            <button onClick={handleUndo} disabled={editorState.historyIndex <= 0} className="p-2 hover:bg-zinc-800 disabled:opacity-20 rounded transition-colors"><Undo2 size={18} /></button>
+            <button onClick={handleRedo} disabled={editorState.historyIndex >= editorState.history.length - 1} className="p-2 hover:bg-zinc-800 disabled:opacity-20 rounded transition-colors"><Redo2 size={18} /></button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1 bg-zinc-800 rounded-lg p-1">
+            <button onClick={handleZoomOut} className="p-1.5 hover:bg-zinc-700 rounded text-zinc-400 hover:text-white"><ZoomOut size={16} /></button>
+            <div className="px-2 text-xs font-medium text-zinc-100 min-w-[48px] text-center">{Math.round(editorState.zoom * 100)}%</div>
+            <button onClick={handleZoomIn} className="p-1.5 hover:bg-zinc-700 rounded text-zinc-400 hover:text-white"><ZoomIn size={16} /></button>
+          </div>
+
+          {/* Grid Toggle */}
+          <div className="relative">
+            <button
+              onClick={() => setShowGridMenu(!showGridMenu)}
+              className={`p-2 rounded hover:bg-zinc-800 transition-colors ${activeGrid !== 'none' ? 'text-blue-500 bg-blue-500/10' : 'text-zinc-400'}`}
+              title="Canvas Grids"
+            >
+              <Grid size={18} />
+            </button>
+            {showGridMenu && (
+              <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-[#1e1e20] border border-zinc-700 rounded-lg shadow-xl p-1.5 min-w-[140px] z-[60] flex flex-col gap-1">
+                {(['none', 'thirds', '4x4', '6x6', 'swiss', 'fibonacci', 'golden', 'bauhaus'] as GridType[]).map(type => (
+                  <button
+                    key={type}
+                    onClick={() => { setActiveGrid(type); setShowGridMenu(false); }}
+                    className={`text-left px-3 py-2 rounded text-xs font-medium transition-colors ${activeGrid === type ? 'bg-blue-600 text-white' : 'text-zinc-300 hover:bg-zinc-700'}`}
+                  >
+                    {type === 'none' ? 'No Grid' :
+                      type === 'thirds' ? 'Rule of Thirds' :
+                        type === 'swiss' ? 'Swiss Grid' :
+                          type === 'fibonacci' ? 'Fibonacci (Phi)' :
+                            type === 'golden' ? 'Golden Triangle' :
+                              type === 'bauhaus' ? 'Bauhaus (Geometric)' :
+                                `${type} Grid`}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <button onClick={centerWorkspace} className="p-2 hover:bg-zinc-800 rounded text-zinc-400" title="Fit to Screen (Ctrl+0)"><Maximize2 size={18} /></button>
+          <button onClick={() => setShowExportDialog(true)} disabled={isExporting || isGenerating} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg transition-all active:scale-[0.98]">
+            {isExporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+            {isExporting ? 'Exporting...' : 'Export'}
+          </button>
+          {!editorState.isPro && (
+            <button
+              onClick={() => setShowCreditsModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-pro-gradient text-white text-sm font-bold rounded-lg shadow-lg shadow-blue-500/20 hover:scale-[1.02] transition-all active:scale-[0.98]"
+            >
+              <Sparkles size={14} />Buy Credits
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="flex flex-1 overflow-hidden relative">
+        <Toolbar onAddElement={handleAddElement} onToolSelect={setActiveTool} activeTool={activeTool} />
+        <main
+          ref={workspaceRef}
+          className={`flex-1 bg-zinc-950 relative overflow-hidden transition-all duration-75 ${isPanning || isSpacePressed || activeTool === 'hand' ? 'cursor-grabbing' : 'cursor-default'}`}
+          onWheel={handleWheel} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}
+        >
+          <div
+            className="absolute origin-top-left pointer-events-none"
+            style={{ transform: `translate(${editorState.pan.x}px, ${editorState.pan.y}px) scale(${editorState.zoom})` }}
+          >
+            <div className="bg-transparent shadow-[0_0_100px_rgba(0,0,0,0.8)] pointer-events-auto overflow-hidden" style={{ width: activePage.width, height: activePage.height }}>
+              <Stage
+                ref={stageRef}
+                width={activePage.width}
+                height={activePage.height}
+                onMouseDown={(e) => {
+                  if (activeTool === 'hand') return;
+                  if (e.target === e.target.getStage()) setEditorState(prev => ({ ...prev, selectedLayerId: null }));
+                }}
+              >
+                <KonvaLayer>
+                  <Rect width={activePage.width} height={activePage.height} fill={activePage.backgroundColor || '#ffffff'} listening={false} />
+                  {activeGuides && activeGuides.x !== undefined && <Line points={[activeGuides.x, 0, activeGuides.x, activePage.height]} stroke="#ff00ff" strokeWidth={1 / editorState.zoom} dash={[4 / editorState.zoom, 4 / editorState.zoom]} />}
+                  {activeGuides && activeGuides.y !== undefined && <Line points={[0, activeGuides.y, activePage.width, activeGuides.y]} stroke="#ff00ff" strokeWidth={1 / editorState.zoom} dash={[4 / editorState.zoom, 4 / editorState.zoom]} />}
+                  <GridOverlay width={activePage.width} height={activePage.height} type={isExporting ? 'none' : activeGrid} />
+                  {activePage.layers.map((layer) => (
+                    <CanvasElement
+                      key={layer.id}
+                      layer={layer}
+                      page={activePage}
+                      isSelected={layer.id === editorState.selectedLayerId}
+                      onSelect={() => { if (activeTool === 'select') setEditorState(prev => ({ ...prev, selectedLayerId: layer.id })); }}
+                      onDragMove={setActiveGuides}
+                      onChange={(updates) => updateLayer(layer.id, updates)}
+                      onEditingChange={handleCanvasEditingToggle}
+                    />
+                  ))}
+                </KonvaLayer>
+              </Stage>
+            </div>
+          </div>
+        </main>
+
+        <PropertiesPanel
+          pages={editorState.pages} activePageId={editorState.activePageId}
+          selectedLayer={activePage.layers.find(l => l.id === editorState.selectedLayerId) || null}
+          onUpdateLayer={updateLayer} onDuplicateLayer={duplicateLayer} onUpdatePage={updateActivePage}
+          onSelectLayer={(id) => setEditorState(prev => ({ ...prev, selectedLayerId: id }))}
+          onReorderLayers={reorderLayers}
+          onGenerateVideo={handleTriggerAIVideo}
+          onPageAction={{
+            select: (id) => setEditorState(prev => ({ ...prev, activePageId: id, selectedLayerId: null })),
+            add: () => {
+              const newId = uuidv4();
+              const newPage: Page = { ...activePage, id: newId, layers: [], name: `Scene ${editorState.pages.length + 1}`, backgroundColor: '#ffffff' };
+              pushToHistory([...editorState.pages, newPage]);
+              setEditorState(prev => ({ ...prev, activePageId: newId, selectedLayerId: null }));
+            },
+            duplicate: (id) => {
+              const source = editorState.pages.find(p => p.id === id)!;
+              const newId = uuidv4();
+              const newPage = { ...source, id: newId, name: `${source.name} Copy` };
+              pushToHistory([...editorState.pages, newPage]);
+              setEditorState(prev => ({ ...prev, activePageId: newId, selectedLayerId: null }));
+            },
+            delete: (id) => {
+              const newPages = editorState.pages.filter(p => p.id !== id);
+              pushToHistory(newPages);
+              setEditorState(prev => ({ ...prev, activePageId: newPages[0].id, selectedLayerId: null }));
+            },
+            rename: (id, name) => {
+              const newPages = editorState.pages.map(p => p.id === id ? { ...p, name } : p);
+              pushToHistory(newPages);
+            }
+          }}
+        />
+      </div>
+    </div >
+  );
+};
+
+export default App;

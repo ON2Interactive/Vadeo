@@ -1,0 +1,266 @@
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e5]:
+      - img "batchoCanvas" [ref=e7] [cursor=pointer]
+      - generic [ref=e8]:
+        - button "Pricing" [ref=e9] [cursor=pointer]
+        - button "Try for Free" [ref=e10] [cursor=pointer]
+  - generic [ref=e14]:
+    - generic [ref=e15]:
+      - heading "Freeform Design on Canvas" [level=1] [ref=e16]
+      - paragraph [ref=e17]: Animate. Layers · Scenes · Aspect Ratios · Video Export
+    - generic [ref=e18]:
+      - generic [ref=e19]:
+        - img [ref=e21]
+        - heading "Video Layers" [level=3] [ref=e25]
+        - paragraph [ref=e26]: Add and layer multiple video clips with precise control over positioning and timing.
+      - generic [ref=e27]:
+        - img [ref=e29]
+        - heading "Text & Shapes" [level=3] [ref=e31]
+        - paragraph [ref=e32]: Professional text overlays and graphics with full customization options.
+      - generic [ref=e33]:
+        - img [ref=e35]
+        - heading "Export to Video" [level=3] [ref=e38]
+        - paragraph [ref=e39]: High-quality video export optimized for web and social media.
+      - generic [ref=e40]:
+        - img [ref=e42]
+        - heading "Cloud Saving" [level=3] [ref=e44]
+        - paragraph [ref=e45]: Projects saved automatically to the cloud. Access from anywhere.
+      - generic [ref=e46]:
+        - img [ref=e48]
+        - heading "Auto-Save" [level=3] [ref=e50]
+        - paragraph [ref=e51]: Never lose your work with automatic saving every 30 seconds.
+      - generic [ref=e52]:
+        - img [ref=e54]
+        - heading "AI Generation" [level=3] [ref=e57]
+        - paragraph [ref=e58]: Generate video content with AI. Transform images into motion.
+      - generic [ref=e59]:
+        - img [ref=e61]
+        - heading "Layout Grids" [level=3] [ref=e63]
+        - paragraph [ref=e64]: Perfect your composition with Rule of Thirds, Golden Ratio, and Swiss grids.
+      - generic [ref=e65]:
+        - img [ref=e67]
+        - heading "Blend Modes" [level=3] [ref=e73]
+        - paragraph [ref=e74]: Create professional composites using Multiply, Screen, Overlay, and more.
+      - generic [ref=e75]:
+        - img [ref=e77]
+        - heading "Smart Grouping" [level=3] [ref=e84]
+        - paragraph [ref=e85]: Group elements together to move, resize, and style them as a single unit.
+      - generic [ref=e86]:
+        - img [ref=e88]
+        - heading "Export to PDF" [level=3] [ref=e91]
+        - paragraph [ref=e92]: Export your video frames or layouts as high-quality PDF documents for storyboards.
+  - generic [ref=e93]:
+    - generic [ref=e94]:
+      - heading "A New Kind of Freeform Design Tool" [level=1] [ref=e95]
+      - heading "Export Layout as Video" [level=3] [ref=e96]
+    - img "BatchoCanvas Interface" [ref=e97]
+    - generic [ref=e98]:
+      - paragraph [ref=e99]: BatchoCanvas is a design canvas with a built-in animation timeline.
+      - paragraph [ref=e100]: Animate images, text, and shapes on the canvas, use masking and blend modes for precision, and export as images, videos, or PDFs—without switching tools.
+      - paragraph [ref=e101]: No workarounds. No compromises.
+  - generic [ref=e103]:
+    - generic [ref=e104]:
+      - heading "New Features" [level=1] [ref=e105]
+      - paragraph [ref=e106]: The most requested tools, now natively in BatchoCanvas.
+    - generic [ref=e107]:
+      - generic [ref=e108]:
+        - img [ref=e110]
+        - heading "Masking" [level=3] [ref=e116]
+        - paragraph [ref=e117]: Shape your vision. Crop and mask videos or images into geometric shapes directly on the canvas.
+      - generic [ref=e118]:
+        - img [ref=e120]
+        - heading "Remix" [level=3] [ref=e123]
+        - paragraph [ref=e124]: Instant AI Style. Transform your entire design in one click with pro color palettes and typography.
+      - generic [ref=e125]:
+        - img [ref=e127]
+        - heading "Animate" [level=3] [ref=e130]
+        - paragraph [ref=e131]: Precision Timing. Animate layers, sequence scenes, and manage keyframes with a design-first timeline.
+  - generic [ref=e133]:
+    - generic [ref=e134]:
+      - heading "Why BatchoCanvas?" [level=1] [ref=e135]
+      - generic [ref=e136]:
+        - paragraph [ref=e137]: BatchoCanvas is built to help creators of all kinds design content quickly and confidently.
+        - paragraph [ref=e138]: Whether you’re creating visuals, motion pieces, or presentations, BatchoCanvas lets you work freely on a canvas, animate elements when needed, and export in the format your work requires—without complex tools or rigid workflows.
+        - paragraph [ref=e139]: Create faster. Iterate easily. Share everywhere.
+    - generic [ref=e140]:
+      - heading "What Can I Create?" [level=1] [ref=e141]
+      - generic [ref=e142]:
+        - paragraph [ref=e143]: BatchoCanvas lets you create a wide range of content across multiple canvases within a single project.
+        - paragraph [ref=e144]: Design social media posts, posters, animated graphics, short videos, and presentations. Use multiple canvases as scenes to build variations, sequences, or formats—then export each canvas as an image, video, or PDF.
+        - paragraph [ref=e145]: Create more, without starting over.
+    - generic [ref=e146]:
+      - heading "Built for Creators" [level=1] [ref=e147]
+      - generic [ref=e148]:
+        - paragraph [ref=e149]: BatchoCanvas is built for creators who care about layout, consistency, and speed.
+        - paragraph [ref=e150]: Whether you’re making social content, presentations, tutorials, or ads, BatchoCanvas lets you reuse designs, swap media, and produce polished videos without repeating the same edits over and over.
+        - paragraph [ref=e151]: Create once. Adapt everywhere.
+  - generic [ref=e152]:
+    - heading "Users" [level=1] [ref=e153]
+    - generic [ref=e154]:
+      - generic [ref=e155]:
+        - paragraph [ref=e156]: "\"BatchoCanvas changed how we produce video layouts. What used to require repeated edits now happens visually on a canvas—and the results are consistently polished.\""
+        - paragraph [ref=e157]: — Jordan P. • Creative Director
+      - generic [ref=e158]:
+        - paragraph [ref=e159]: "\"I needed professional-looking videos without spending hours editing. BatchoCanvas lets me design once, reuse scenes, and export clean videos whenever I need them.\""
+        - paragraph [ref=e160]: — Elena R. • Independent Creator
+      - generic [ref=e161]:
+        - paragraph [ref=e162]: "\"Our social videos feel more intentional now. Layouts stay consistent across formats, and exporting different aspect ratios is effortless.\""
+        - paragraph [ref=e163]: — Marcus L. • Growth Marketing Lead
+      - generic [ref=e164]:
+        - paragraph [ref=e165]: "\"BatchoCanvas fits perfectly into our workflow. We design scenes like pages, swap media, and deliver finished videos faster than ever.\""
+        - paragraph [ref=e166]: — Sofia K. • Content Strategist
+      - generic [ref=e167]:
+        - paragraph [ref=e168]: "\"We finally have a unified visual system for video. Every export looks aligned, on-brand, and ready to publish—no manual fixes required.\""
+        - paragraph [ref=e169]: — Daniel M. • Product Marketing Manager
+  - generic [ref=e170]:
+    - heading "FAQs" [level=1] [ref=e171]
+    - generic [ref=e172]:
+      - generic [ref=e173]:
+        - heading "What is BatchoCanvas?" [level=3] [ref=e174]
+        - paragraph [ref=e175]: BatchoCanvas is a freeform design canvas for creating both static and animated content. Design visually using layers and multiple canvases, animate elements with a built-in timeline, apply masking and blend modes, and export your work as images, videos, or PDFs.
+      - generic [ref=e176]:
+        - heading "Do I need design or animation experience to use it?" [level=3] [ref=e177]
+        - paragraph [ref=e178]: No. BatchoCanvas is built to feel intuitive and approachable. If you’re comfortable working with layers and arranging elements on a canvas, you can start creating right away—no animation or video editing background required.
+      - generic [ref=e179]:
+        - heading "How does BatchoCanvas differ from traditional editors?" [level=3] [ref=e180]
+        - paragraph [ref=e181]: Most tools force you to choose between static design and timeline-based editing. BatchoCanvas combines both. You design directly on a canvas, then use the timeline only when you want to animate elements—without disrupting your layout or workflow.
+      - generic [ref=e182]:
+        - heading "Can I export in different formats and sizes?" [level=3] [ref=e183]
+        - paragraph [ref=e184]: Yes. BatchoCanvas supports common aspect ratios as well as custom canvas sizes. You can export each canvas as an image, video, or PDF, depending on how you plan to use it.
+      - generic [ref=e185]:
+        - heading "How do multiple canvases (scenes) work?" [level=3] [ref=e186]
+        - paragraph [ref=e187]: You can create multiple canvases within a single project. Each canvas acts like its own scene, making it easy to create variations, sequences, or different formats—then export each one individually or together.
+      - generic [ref=e188]:
+        - heading "Are my projects saved?" [level=3] [ref=e189]
+        - paragraph [ref=e190]: Yes. All projects are saved to your account so you can return, edit, and export at any time. Your work stays organized and accessible.
+      - generic [ref=e191]:
+        - heading "What types of content is BatchoCanvas best for?" [level=3] [ref=e192]
+        - paragraph [ref=e193]: BatchoCanvas works well for social media content, posters, animated graphics, short videos, presentations, storyboards, and other visual assets—whether static or animated.
+      - generic [ref=e194]:
+        - heading "Is BatchoCanvas still evolving?" [level=3] [ref=e195]
+        - paragraph [ref=e196]: Yes. BatchoCanvas is actively developed, with ongoing updates focused on performance, usability, and expanding creative capabilities.
+      - generic [ref=e197]:
+        - heading "How much can I create?" [level=3] [ref=e198]
+        - paragraph [ref=e199]: That depends on your plan. You can start for free to explore BatchoCanvas, with options to upgrade for higher limits and additional export capabilities.
+  - generic [ref=e200]:
+    - generic [ref=e201]:
+      - heading "A New Kind of Freeform Design Tool" [level=2] [ref=e202]
+      - paragraph [ref=e203]: BatchoCanvas takes a design-first approach. Instead of a traditional timeline, you build scenes like slides. Layer video, text, and shapes with absolute precision.
+    - generic [ref=e204]:
+      - generic [ref=e205]:
+        - generic [ref=e206]:
+          - generic [ref=e207]:
+            - img [ref=e209]
+            - heading "Starter Pack" [level=3] [ref=e211]
+          - generic [ref=e212]: $10
+          - generic [ref=e213]: 600 credits
+        - list [ref=e214]:
+          - listitem [ref=e215]:
+            - img [ref=e216]
+            - text: 10 credits / export
+          - listitem [ref=e219]:
+            - img [ref=e220]
+            - text: 10 credits / AI gen
+        - paragraph [ref=e223]: Best for testing ideas and a few quick projects.
+        - generic [ref=e224]: ✓ + 50 Free Credits
+        - button "Get Started" [ref=e225] [cursor=pointer]
+      - generic [ref=e226]:
+        - generic [ref=e227]: Most Popular
+        - generic [ref=e228]:
+          - generic [ref=e229]:
+            - img [ref=e231]
+            - heading "Pro Pack" [level=3] [ref=e233]
+          - generic [ref=e234]: $25
+          - generic [ref=e235]: 1,800 credits
+        - list [ref=e236]:
+          - listitem [ref=e237]:
+            - img [ref=e238]
+            - text: 10 credits / export
+          - listitem [ref=e241]:
+            - img [ref=e242]
+            - text: 10 credits / AI gen
+        - paragraph [ref=e245]: Ideal for creators and brands running multiple campaigns.
+        - generic [ref=e246]: ✓ + 50 Free Credits
+        - button "Get Started" [ref=e247] [cursor=pointer]
+      - generic [ref=e248]:
+        - generic [ref=e249]:
+          - generic [ref=e250]:
+            - img [ref=e252]
+            - heading "Brand Pack" [level=3] [ref=e256]
+          - generic [ref=e257]: $50
+          - generic [ref=e258]: 4,000 credits
+        - list [ref=e259]:
+          - listitem [ref=e260]:
+            - img [ref=e261]
+            - text: 10 credits / export
+          - listitem [ref=e264]:
+            - img [ref=e265]
+            - text: 10 credits / AI gen
+        - paragraph [ref=e268]: Built for high-volume content creators and agencies.
+        - generic [ref=e269]: ✓ + 50 Free Credits
+        - button "Get Started" [ref=e270] [cursor=pointer]
+    - generic [ref=e271]:
+      - generic [ref=e272]: No subscriptions
+      - generic [ref=e274]: Credits never expire
+      - generic [ref=e276]: Design for free
+      - generic [ref=e278]: 4K premium output
+  - button "Try for Free" [ref=e283] [cursor=pointer]
+  - generic [ref=e285]:
+    - generic [ref=e286]:
+      - 'heading "Soon: Image + Video Edits." [level=1] [ref=e287]'
+      - paragraph [ref=e288]: Edit Uploaded Images or Videos Directly on the Canvas.
+    - generic [ref=e289]:
+      - generic [ref=e290]:
+        - textbox "Name" [ref=e291]
+        - textbox "eMail" [ref=e292]
+      - generic [ref=e293]:
+        - button "Notify Me" [ref=e294] [cursor=pointer]
+        - paragraph [ref=e295]: You’ll only hear from us when Image + Video Edits is ready.
+  - contentinfo [ref=e296]:
+    - generic [ref=e297]:
+      - button "batchoCanvas" [ref=e299] [cursor=pointer]:
+        - img "batchoCanvas" [ref=e300]
+      - generic [ref=e301]:
+        - generic [ref=e302]:
+          - generic [ref=e303]:
+            - heading "Product" [level=3] [ref=e304]
+            - list [ref=e305]:
+              - listitem [ref=e306]:
+                - button "Features" [ref=e307] [cursor=pointer]
+              - listitem [ref=e308]:
+                - button "Pricing" [ref=e309] [cursor=pointer]
+              - listitem [ref=e310]:
+                - button "Sign In" [ref=e311] [cursor=pointer]
+              - listitem [ref=e312]:
+                - button "Get Started" [ref=e313] [cursor=pointer]
+          - generic [ref=e314]:
+            - heading "Resources" [level=3] [ref=e315]
+            - list [ref=e316]:
+              - listitem [ref=e317]:
+                - button "Use Cases" [ref=e318] [cursor=pointer]
+              - listitem [ref=e319]:
+                - button "FAQs" [ref=e320] [cursor=pointer]
+              - listitem [ref=e321]:
+                - button "Help" [ref=e322] [cursor=pointer]
+        - generic [ref=e323]:
+          - generic [ref=e324]:
+            - heading "Legal" [level=3] [ref=e325]
+            - generic [ref=e326]:
+              - button "Terms of Use" [ref=e328] [cursor=pointer]
+              - button "Privacy Policy" [ref=e330] [cursor=pointer]
+              - button "Cookie Policy" [ref=e332] [cursor=pointer]
+              - button "DMCA Notice" [ref=e334] [cursor=pointer]
+          - generic [ref=e335]:
+            - heading "KeepUp" [level=3] [ref=e336]
+            - generic [ref=e337]:
+              - link "Facebook" [ref=e339] [cursor=pointer]:
+                - /url: https://www.facebook.com/BatchoAI/
+                - img [ref=e340]
+              - link "Instagram" [ref=e343] [cursor=pointer]:
+                - /url: https://www.instagram.com/batchoai/
+                - img [ref=e344]
+              - link "LinkedIn" [ref=e348] [cursor=pointer]:
+                - /url: https://www.linkedin.com/company/on2interactive
+                - img [ref=e349]
+      - paragraph [ref=e354]: © batchoCanvas 2026 All Rights Reserved

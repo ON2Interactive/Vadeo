@@ -1,0 +1,7 @@
+{
+  "name": "batchoCanvas",
+  "description": "A high-end, canvas-based video and design editor with multi-page support, zoomable workspace, and professional layout tools.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

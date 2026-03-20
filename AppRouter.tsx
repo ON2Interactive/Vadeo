@@ -12,6 +12,7 @@ import { adminHelpers } from './lib/supabase';
 import { type StripePlanId } from './stripeConfig';
 import { beginStripeCheckout } from './lib/stripeCheckout';
 import GoogleOAuthCallbackPage from './components/Auth/GoogleOAuthCallbackPage';
+import { applyActivePlan, clearActivePlan, getStoredPlanForUser, hasStoredSubscription, setStoredPlanForUser, type ActivePlan } from './lib/subscriptionStorage';
 
 import { useLocation, useNavigate } from 'react-router-dom';
 import ContactPage from './components/ContactPage';
@@ -34,34 +35,47 @@ const AppRouter: React.FC = () => {
     const [currentProject, setCurrentProject] = useState<any>(null);
     const [isAdmin, setIsAdmin] = useState(false);
     const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
-    const [pendingPlan, setPendingPlan] = useState<StripePlanId | null>(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [hasSubscription, setHasSubscription] = useState(false);
     const location = useLocation();
     const navigate = useNavigate();
 
     useEffect(() => {
-        checkAuth();
+        const initializeRouter = async () => {
+            const syncSubscription = async () => {
+                const user = await authHelpers.getCurrentUser();
+                if (!user) return false;
 
-        // Check for payment success
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('payment') === 'success') {
-            // Check for pending purchase to notify admin
-            const pendingPurchase = localStorage.getItem('pending_purchase');
-            if (pendingPurchase) {
-                try {
-                    const purchaseData = JSON.parse(pendingPurchase);
-                    const purchasedPlanId = purchaseData.planId;
-                    if (purchasedPlanId === 'STARTER') {
-                        localStorage.setItem('vd_plan', 'starter');
-                    } else if (purchasedPlanId === 'PRO') {
-                        localStorage.setItem('vd_plan', 'standard');
-                    } else if (purchasedPlanId === 'BRAND') {
-                        localStorage.setItem('vd_plan', 'premium');
-                        localStorage.setItem('vd_pro_status', 'true');
-                    }
-                    authHelpers.getCurrentUser().then(user => {
+                const storedPlan = getStoredPlanForUser(user.id);
+                applyActivePlan(storedPlan);
+                setHasSubscription(Boolean(storedPlan));
+                return Boolean(storedPlan);
+            };
+
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('payment') === 'success') {
+                const pendingPurchase = localStorage.getItem('pending_purchase');
+                if (pendingPurchase) {
+                    try {
+                        const purchaseData = JSON.parse(pendingPurchase);
+                        const purchasedPlanId = purchaseData.planId;
+                        let resolvedPlan: ActivePlan | null = null;
+                        if (purchasedPlanId === 'STARTER') {
+                            resolvedPlan = 'starter';
+                        } else if (purchasedPlanId === 'PRO') {
+                            resolvedPlan = 'standard';
+                        } else if (purchasedPlanId === 'BRAND') {
+                            resolvedPlan = 'premium';
+                        }
+
+                        const user = await authHelpers.getCurrentUser();
                         if (user) {
-                            // Send notification
+                            if (resolvedPlan) {
+                                setStoredPlanForUser(user.id, resolvedPlan);
+                                applyActivePlan(resolvedPlan);
+                                setHasSubscription(true);
+                            }
+
                             dbHelpers.sendEmail({
                                 to: user.email || 'unknown@user.com',
                                 subject: 'New Purchase',
@@ -72,36 +86,20 @@ const AppRouter: React.FC = () => {
                                 localStorage.removeItem('pending_purchase');
                             }).catch(err => console.error('Failed to send purchase notification:', err));
                         }
-                    });
-                } catch (e) {
-                    console.error('Error parsing pending purchase:', e);
+                    } catch (e) {
+                        console.error('Error parsing pending purchase:', e);
+                    }
                 }
+                navigate('/editor', { replace: true });
+                return;
             }
-            navigate('/editor', { replace: true });
-        }
-    }, [isAdminAuthenticated]);
 
-    useEffect(() => {
-        const params = new URLSearchParams(location.search);
-        const checkoutPlan = params.get('checkoutPlan');
+            checkAuth();
+            syncSubscription();
+        };
 
-        if (!isAuthenticated || !checkoutPlan) {
-            return;
-        }
-
-        if (checkoutPlan !== 'STARTER' && checkoutPlan !== 'PRO' && checkoutPlan !== 'BRAND') {
-            navigate('/editor', { replace: true });
-            return;
-        }
-
-        beginStripeCheckout(checkoutPlan, {
-            successPath: '/editor',
-            cancelPath: '/pricing',
-        }).catch((error) => {
-            console.error('Failed to start checkout after sign-in:', error);
-            navigate('/pricing', { replace: true });
-        });
-    }, [isAuthenticated, location.search, navigate]);
+        initializeRouter();
+    }, [isAdminAuthenticated, navigate]);
 
     useEffect(() => {
         // Sync view with URL path
@@ -165,6 +163,10 @@ const AppRouter: React.FC = () => {
 
         if (session) {
             setIsAuthenticated(true);
+            const userPlan = getStoredPlanForUser(session.user.id);
+            const userHasSubscription = hasStoredSubscription(session.user.id);
+            setHasSubscription(userHasSubscription);
+            applyActivePlan(userPlan);
             const adminStatus = await adminHelpers.isUserAdmin(session.user.id);
             setIsAdmin(adminStatus);
             setIsAdminAuthenticated(adminStatus);
@@ -195,7 +197,11 @@ const AppRouter: React.FC = () => {
             } else if (path === '/auth/google/callback') {
                 setView('googleCallback');
             } else if (path.startsWith('/editor')) {
-                setView('editor');
+                if (userHasSubscription) {
+                    setView('editor');
+                } else {
+                    navigate('/pricing', { replace: true });
+                }
             } else if (path === '/admin') {
                 setView('admin');
             } else if (path === '/admin-login') {
@@ -204,13 +210,15 @@ const AppRouter: React.FC = () => {
                 // Default for unknown authenticated routes? 
                 // Maybe check if it matches other public routes
                 if (path === '/signin' || path === '/signup') {
-                    navigate('/editor', { replace: true });
+                    navigate(userHasSubscription ? '/editor' : '/pricing', { replace: true });
                 } else {
                     setView('landing'); // Default to landing for unknown
                 }
             }
         } else {
             setIsAuthenticated(false);
+            setHasSubscription(false);
+            clearActivePlan();
             if (path === '/admin') {
                 setView('admin');
             } else if (path === '/admin-login') {
@@ -244,7 +252,7 @@ const AppRouter: React.FC = () => {
             } else if (path === '/auth/google/callback') {
                 setView('googleCallback');
             } else if (path.startsWith('/editor')) {
-                setView('editor');
+                navigate('/signup', { replace: true });
             } else {
                 setView('landing');
             }
@@ -262,16 +270,11 @@ const AppRouter: React.FC = () => {
     };
 
     const handleLoginSuccess = () => {
-        navigate('/editor');
+        navigate(hasSubscription ? '/editor' : '/pricing');
     };
 
     const handleSignupSuccess = () => {
-        if (pendingPlan) {
-            navigate(`/editor?checkoutPlan=${pendingPlan}`, { replace: true });
-        } else {
-            navigate('/editor');
-        }
-        setPendingPlan(null);
+        navigate('/pricing');
     };
 
     const handleLogout = () => {
@@ -303,7 +306,6 @@ const AppRouter: React.FC = () => {
             });
         } else {
             // User not logged in, go to signup first
-            setPendingPlan(planId);
             navigate('/signup');
         }
     };
@@ -409,7 +411,7 @@ const AppRouter: React.FC = () => {
             <LoginPage
                 onSuccess={handleLoginSuccess}
                 onSwitchToSignup={() => setView('signup')}
-                redirectPath={pendingPlan ? `/editor?checkoutPlan=${pendingPlan}` : '/editor'}
+                redirectPath="/editor"
             />
         );
     }
@@ -419,7 +421,7 @@ const AppRouter: React.FC = () => {
             <SignupPage
                 onSuccess={handleSignupSuccess}
                 onSwitchToLogin={() => setView('login')}
-                redirectPath={pendingPlan ? `/editor?checkoutPlan=${pendingPlan}` : '/editor'}
+                redirectPath="/pricing"
             />
         );
     }

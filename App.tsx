@@ -67,9 +67,9 @@ interface AppProps {
   onBackToDashboard?: () => void;
 }
 
-type PlanTier = 'starter' | 'standard' | 'premium';
+type PlanTier = 'none' | 'starter' | 'standard' | 'premium';
 
-const DEV_BYPASS_CREDITS = true;
+const DEV_BYPASS_CREDITS = false;
 const DEV_UNLIMITED_CREDITS = 9999;
 const IMAGE_UPLOAD_INPUT_ID = 'editor-image-upload';
 const VIDEO_UPLOAD_INPUT_ID = 'editor-video-upload';
@@ -112,7 +112,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
     if (storedPlan === 'starter' || storedPlan === 'standard' || storedPlan === 'premium') {
       return storedPlan;
     }
-    return DEV_BYPASS_CREDITS ? 'premium' : 'starter';
+    return DEV_BYPASS_CREDITS ? 'premium' : 'none';
   });
   const [showCreditsModal, setShowCreditsModal] = useState(false);
   const [isNewProject, setIsNewProject] = useState(true);
@@ -123,7 +123,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
 
   const hasGenerationAccess = DEV_BYPASS_CREDITS || currentPlan === 'standard' || currentPlan === 'premium';
   const hasPremiumAccess = DEV_BYPASS_CREDITS || currentPlan === 'premium';
-  const planLabel = DEV_BYPASS_CREDITS ? 'Premium' : currentPlan === 'premium' ? 'Premium' : currentPlan === 'standard' ? 'Standard' : 'Starter';
+  const planLabel = DEV_BYPASS_CREDITS ? 'Premium' : currentPlan === 'premium' ? 'Premium' : currentPlan === 'standard' ? 'Standard' : currentPlan === 'starter' ? 'Starter' : 'No Subscription';
 
   const applyPlan = (plan: PlanTier) => {
     setCurrentPlan(plan);

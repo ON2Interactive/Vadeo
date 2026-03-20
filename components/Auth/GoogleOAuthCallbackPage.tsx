@@ -35,7 +35,7 @@ const GoogleOAuthCallbackPage: React.FC = () => {
           throw new Error(payload?.error || 'Google sign-in failed');
         }
 
-        window.location.replace(payload.redirect || '/dashboard');
+        window.location.replace(payload.redirect || '/editor');
       } catch (callbackError) {
         setError(callbackError instanceof Error ? callbackError.message : 'Google sign-in failed');
       }

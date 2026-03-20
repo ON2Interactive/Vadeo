@@ -101,7 +101,7 @@ const buildSession = async () => {
   }
 };
 
-const redirectToGoogle = (redirectPath = '/dashboard') => {
+const redirectToGoogle = (redirectPath = '/editor') => {
   if (typeof window === 'undefined') return;
 
   const target = new URL('/api/auth/google/start', window.location.origin);
@@ -113,16 +113,16 @@ export const supabase = null;
 
 export const authHelpers = {
   async signUp() {
-    redirectToGoogle('/dashboard');
+    redirectToGoogle('/editor');
     return { data: null, error: null };
   },
 
   async signIn() {
-    redirectToGoogle('/dashboard');
+    redirectToGoogle('/editor');
     return { data: null, error: null };
   },
 
-  async signInWithGoogle(redirectPath = '/dashboard') {
+  async signInWithGoogle(redirectPath = '/editor') {
     redirectToGoogle(redirectPath);
   },
 

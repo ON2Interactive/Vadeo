@@ -228,7 +228,7 @@ const AppRouter: React.FC = () => {
     };
 
     const handleLoginSuccess = () => {
-        navigate('/dashboard');
+        navigate('/editor');
     };
 
     const handleSignupSuccess = () => {
@@ -247,7 +247,7 @@ const AppRouter: React.FC = () => {
             }
             window.location.href = STRIPE_CONFIG.LINKS[pendingPlan as keyof typeof STRIPE_CONFIG.LINKS];
         } else {
-            navigate('/dashboard');
+            navigate('/editor');
         }
         setPendingPlan(null);
     };
@@ -268,7 +268,7 @@ const AppRouter: React.FC = () => {
     };
 
     const handleBackToDashboard = () => {
-        navigate('/dashboard');
+        navigate('/');
         setCurrentProject(null);
     };
 
@@ -417,17 +417,6 @@ const AppRouter: React.FC = () => {
 
     if (view === 'googleCallback') {
         return <GoogleOAuthCallbackPage />;
-    }
-
-    if (view === 'dashboard') {
-        return (
-            <Dashboard
-                onNewProject={handleNewProject}
-                onLoadProject={handleLoadProject}
-                onLogout={handleLogout}
-                onAdminClick={isAdmin ? () => setView('admin') : undefined}
-            />
-        );
     }
 
     if (view === 'adminLogin') {

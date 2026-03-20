@@ -12,6 +12,10 @@ export const SignupPage: React.FC<SignupPageProps> = ({ onSuccess, onSwitchToLog
     const [loading, setLoading] = useState(false);
     const { executeRecaptcha } = useRecaptcha();
 
+    React.useEffect(() => {
+        document.title = 'Vadeo | Sign Up';
+    }, []);
+
     const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');

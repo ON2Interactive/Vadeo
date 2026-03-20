@@ -4,6 +4,8 @@ const GoogleOAuthCallbackPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    document.title = 'Vadeo | Signing In';
+
     const finishLogin = async () => {
       const params = new URLSearchParams(window.location.search);
       const code = params.get('code');
@@ -38,6 +40,7 @@ const GoogleOAuthCallbackPage: React.FC = () => {
         window.location.replace(payload.redirect || '/editor');
       } catch (callbackError) {
         setError(callbackError instanceof Error ? callbackError.message : 'Google sign-in failed');
+        document.title = 'Vadeo | Sign-In Failed';
       }
     };
 

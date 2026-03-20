@@ -86,6 +86,7 @@ type PickerCapableInput = HTMLInputElement & {
 const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
   // --- Manage Body Scroll ---
   useEffect(() => {
+    document.title = 'Vadeo | Editor';
     document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = 'auto';

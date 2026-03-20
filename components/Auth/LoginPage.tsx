@@ -13,6 +13,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onSwitchToSignu
     const [loading, setLoading] = useState(false);
     const { executeRecaptcha } = useRecaptcha();
 
+    React.useEffect(() => {
+        document.title = 'Vadeo | Sign In';
+    }, []);
+
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');

@@ -34,10 +34,10 @@ import GridOverlay, { GridType } from './components/Editor/GridOverlay';
 
 
 import { useExport } from './hooks/useExport';
-import { aiService } from './aiService';
+import { aiService, type VeoResolution } from './aiService';
 import { dbHelpers, authHelpers, storageHelpers } from './lib/supabase';
 import { localProjectStore } from './lib/localProjects';
-import { canUseGeneration, getRemainingGenerations, recordGenerationSuccess, STANDARD_PLAN_GENERATION_LIMIT } from './lib/generationUsage';
+import { canUseGeneration, getRemainingGenerations, recordGenerationSuccess, PLAN_GENERATION_LIMIT } from './lib/generationUsage';
 // import { db } from './db'; // Removing IDB dependency for Project saving
 import { RemixEngine } from './components/Remix/RemixEngine';
 import { useRemix } from './components/Remix/useRemix';
@@ -131,9 +131,9 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
     : isAdminUser
       ? 'Admin'
       : currentPlan === 'premium'
-        ? 'Premium'
+        ? `Premium${Number.isFinite(remainingGenerations) ? ` (${remainingGenerations}/${PLAN_GENERATION_LIMIT} left)` : ''}`
         : currentPlan === 'standard'
-          ? `Standard${Number.isFinite(remainingGenerations) ? ` (${remainingGenerations}/${STANDARD_PLAN_GENERATION_LIMIT} left)` : ''}`
+          ? `Standard${Number.isFinite(remainingGenerations) ? ` (${remainingGenerations}/${PLAN_GENERATION_LIMIT} left)` : ''}`
           : currentPlan === 'starter'
             ? 'Starter'
             : 'No Subscription';
@@ -1137,6 +1137,13 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
     setShowVadeoAdModal(true);
   };
 
+  const getGenerationResolution = (): VeoResolution => {
+    if (DEV_BYPASS_CREDITS || isAdminUser || currentPlan === 'premium') {
+      return '4k';
+    }
+    return '1080p';
+  };
+
   const handleConfirmAI = async (prompt: string, useSimulation: boolean = false) => {
     if (!aiLayerId) return;
     setShowAIModal(false);
@@ -1246,6 +1253,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
         imageInputs,
         prompt,
         veoAspectRatio,
+        getGenerationResolution(),
         (status) => setStatusText(status),
         false
       );
@@ -1297,6 +1305,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
           '',
           prompt,
           normalizeVeoAspectRatio(aspectRatio),
+          getGenerationResolution(),
           (status) => setStatusText(status),
           false,
           audioEnabled,
@@ -1306,6 +1315,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
         resultUrl = await aiService.generateVideoFromPrompt(
           prompt,
           normalizeVeoAspectRatio(aspectRatio),
+          getGenerationResolution(),
           (status) => setStatusText(status),
           false,
           audioEnabled,
@@ -1370,6 +1380,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
         endBase64,
         prompt,
         normalizeVeoAspectRatio(aspectRatio),
+        getGenerationResolution(),
         (status) => setStatusText(status),
         false,
         audioEnabled,
@@ -1424,6 +1435,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
         imageInputs,
         prompt,
         normalizeVeoAspectRatio(aspectRatio),
+        getGenerationResolution(),
         (status) => setStatusText(status),
         false,
         audioEnabled,

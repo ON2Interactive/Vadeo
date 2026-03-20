@@ -1,7 +1,7 @@
 import type { ActivePlan } from './subscriptionStorage';
 
 const GENERATION_USAGE_KEY = 'vadeo_generation_usage';
-const STANDARD_GENERATION_LIMIT = 20;
+const INTERNAL_PLAN_GENERATION_LIMIT = 20;
 
 type UsageMap = Record<string, number>;
 
@@ -37,19 +37,17 @@ export const getGenerationCountForUser = (userId: string | null | undefined) => 
 };
 
 export const getRemainingGenerations = (userId: string | null | undefined, plan: ActivePlan | null) => {
-  if (plan === 'premium') return Number.POSITIVE_INFINITY;
-  if (plan !== 'standard') return 0;
-  return Math.max(0, STANDARD_GENERATION_LIMIT - getGenerationCountForUser(userId));
+  if (plan !== 'standard' && plan !== 'premium') return 0;
+  return Math.max(0, INTERNAL_PLAN_GENERATION_LIMIT - getGenerationCountForUser(userId));
 };
 
 export const canUseGeneration = (userId: string | null | undefined, plan: ActivePlan | null) => {
-  if (plan === 'premium') return true;
-  if (plan !== 'standard') return false;
+  if (plan !== 'standard' && plan !== 'premium') return false;
   return getRemainingGenerations(userId, plan) > 0;
 };
 
 export const recordGenerationSuccess = (userId: string | null | undefined, plan: ActivePlan | null) => {
-  if (!userId || plan !== 'standard') {
+  if (!userId || (plan !== 'standard' && plan !== 'premium')) {
     return getRemainingGenerations(userId, plan);
   }
 
@@ -66,4 +64,4 @@ export const resetGenerationUsageForUser = (userId: string | null | undefined) =
   writeUsage(usage);
 };
 
-export const STANDARD_PLAN_GENERATION_LIMIT = STANDARD_GENERATION_LIMIT;
+export const PLAN_GENERATION_LIMIT = INTERNAL_PLAN_GENERATION_LIMIT;

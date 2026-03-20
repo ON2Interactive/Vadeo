@@ -3,8 +3,9 @@ import { GoogleGenAI } from "@google/genai";
 
 const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_AI_KEY;
 const VEO_MODEL = 'veo-3.1-fast-generate-preview';
-const DEFAULT_RESOLUTION = '1080p';
-const TEST_DURATION_SECONDS = DEFAULT_RESOLUTION === '1080p' ? 8 : 4;
+export type VeoResolution = '720p' | '1080p' | '4k';
+const DEFAULT_RESOLUTION: VeoResolution = '1080p';
+const TEST_DURATION_SECONDS = 8;
 const REF_IMAGE_DURATION_SECONDS = 8;
 type AudioType = 'auto' | 'dialogue' | 'sound-effects' | 'ambient';
 
@@ -103,6 +104,7 @@ export const aiService = {
     endFrameImage: string | null | undefined,
     prompt: string,
     aspectRatio: '16:9' | '9:16' = '16:9',
+    resolution: VeoResolution = DEFAULT_RESOLUTION,
     onProgress: (status: string) => void,
     useSimulation: boolean = false,
     audioEnabled: boolean = true,
@@ -151,7 +153,7 @@ export const aiService = {
         },
         config: {
           numberOfVideos: 1,
-          resolution: DEFAULT_RESOLUTION,
+          resolution,
           durationSeconds: TEST_DURATION_SECONDS,
           aspectRatio: aspectRatio,
           personGeneration: 'allow_adult',
@@ -201,6 +203,7 @@ export const aiService = {
   async generateVideoFromPrompt(
     prompt: string,
     aspectRatio: '16:9' | '9:16' = '16:9',
+    resolution: VeoResolution = DEFAULT_RESOLUTION,
     onProgress: (status: string) => void,
     useSimulation: boolean = false,
     audioEnabled: boolean = true,
@@ -229,7 +232,7 @@ export const aiService = {
         prompt: adPrompt,
         config: {
           numberOfVideos: 1,
-          resolution: DEFAULT_RESOLUTION,
+          resolution,
           durationSeconds: TEST_DURATION_SECONDS,
           aspectRatio,
           personGeneration: 'allow_all'
@@ -275,6 +278,7 @@ export const aiService = {
     images: VeoImageInput[],
     userPrompt: string,
     aspectRatio: '16:9' | '9:16' = '16:9',
+    resolution: VeoResolution = DEFAULT_RESOLUTION,
     onProgress: (status: string) => void,
     useSimulation: boolean = false,
     audioEnabled: boolean = true,
@@ -317,7 +321,7 @@ export const aiService = {
         config: {
           aspectRatio,
           numberOfVideos: 1,
-          resolution: DEFAULT_RESOLUTION,
+          resolution,
           durationSeconds: REF_IMAGE_DURATION_SECONDS,
           personGeneration: 'allow_adult',
           referenceImages

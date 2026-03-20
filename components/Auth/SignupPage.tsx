@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Chrome } from 'lucide-react';
 import { authHelpers } from '../../lib/supabase';
 import { useRecaptcha } from '../../hooks/useRecaptcha';
 
@@ -36,107 +35,140 @@ export const SignupPage: React.FC<SignupPageProps> = ({ onSuccess, onSwitchToLog
     };
 
     return (
-        <div style={{
-            minHeight: '100vh',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            padding: '20px'
-        }}>
-            <div style={{
-                backgroundColor: '#1a1a1a',
-                borderRadius: '16px',
-                padding: '40px',
-                maxWidth: '400px',
-                width: '100%',
-                boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
-            }}>
-                <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-                    <h1 className="text-[36px] max-[480px]:text-[18px] max-[480px]:leading-[1.2] font-black mb-[10px] text-white">
-                        Create Account
-                    </h1>
-                    <p style={{ color: '#888', fontSize: '14px' }}>
-                        Start creating with your Google account
-                    </p>
-                </div>
+        <div
+            style={{
+                minHeight: '100vh',
+                backgroundColor: '#131313',
+                backgroundImage:
+                    'linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px)',
+                backgroundSize: '24px 24px',
+            }}
+        >
+            <main
+                style={{
+                    minHeight: '100vh',
+                    width: 'min(1200px, 100%)',
+                    margin: '0 auto',
+                    padding: '40px 20px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '20px',
+                }}
+            >
+                <a
+                    href="/"
+                    style={{
+                        color: 'rgba(255, 255, 255, 0.74)',
+                        textDecoration: 'none',
+                        fontSize: '14px',
+                    }}
+                >
+                    ← Back to Home
+                </a>
 
-                <form onSubmit={handleSignup}>
-                    {error && (
-                        <div style={{
-                            backgroundColor: '#ff4444',
-                            color: '#fff',
-                            padding: '12px',
-                            borderRadius: '8px',
-                            marginBottom: '20px',
-                            fontSize: '14px'
-                        }}>
-                            {error}
-                        </div>
-                    )}
-
-                    <button
-                        type="submit"
-                        disabled={loading}
+                <section
+                    aria-label="Sign up"
+                    style={{
+                        width: 'min(480px, 100%)',
+                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                        borderRadius: '16px',
+                        background: 'rgba(255, 255, 255, 0.03)',
+                        padding: '36px 28px',
+                        textAlign: 'center',
+                    }}
+                >
+                    <img
+                        src="/vadeo-logo-white.png"
+                        alt="Vadeo"
                         style={{
-                            width: '100%',
-                            padding: '14px',
-                            backgroundColor: loading ? '#555' : '#fff',
-                            color: '#111',
-                            border: '1px solid #3a3a3a',
-                            borderRadius: '8px',
-                            fontSize: '16px',
-                            fontWeight: 'bold',
-                            cursor: loading ? 'not-allowed' : 'pointer',
-                            transition: 'background-color 0.2s',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '8px'
+                            width: '172px',
+                            maxWidth: '100%',
+                            height: 'auto',
+                            display: 'block',
+                            margin: '0 auto 18px',
+                        }}
+                    />
+                    <h1
+                        style={{
+                            margin: '0 0 12px',
+                            color: 'rgba(255, 255, 255, 0.94)',
+                            fontSize: '36px',
+                            fontWeight: 700,
+                            letterSpacing: '-0.04em',
                         }}
                     >
-                        <Chrome size={18} />
-                        {loading ? 'Redirecting to Google...' : 'Create Account with Google'}
-                    </button>
-
-                    <p style={{
-                        color: '#666',
-                        fontSize: '11px',
-                        marginTop: '15px',
-                        textAlign: 'center',
-                        lineHeight: '1.4'
-                    }}>
-                        This site is protected by reCAPTCHA and the Google
-                        <a href="https://policies.google.com/privacy" style={{ color: '#888', textDecoration: 'underline', margin: '0 4px' }}>Privacy Policy</a> and
-                        <a href="https://policies.google.com/terms" style={{ color: '#888', textDecoration: 'underline', margin: '0 4px' }}>Terms of Service</a> apply.
+                        Create your account
+                    </h1>
+                    <p
+                        style={{
+                            margin: '0 0 22px',
+                            color: 'rgba(255, 255, 255, 0.78)',
+                            fontSize: '1rem',
+                            lineHeight: 1.5,
+                        }}
+                    >
+                        Sign up with Google to start creating with Vadeo.
                     </p>
-                </form>
 
-                <div style={{ marginTop: '20px', textAlign: 'center' }}>
-                    <p style={{ color: '#888', fontSize: '14px' }}>
-                        Already have an account?{' '}
+                    {error ? (
+                        <div
+                            style={{
+                                marginBottom: '16px',
+                                borderRadius: '10px',
+                                border: '1px solid rgba(239, 68, 68, 0.45)',
+                                backgroundColor: 'rgba(127, 29, 29, 0.45)',
+                                color: '#fff',
+                                padding: '12px 14px',
+                                fontSize: '14px',
+                            }}
+                        >
+                            {error}
+                        </div>
+                    ) : null}
+
+                    <form onSubmit={handleSignup}>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            style={{
+                                display: 'inline-flex',
+                                width: '100%',
+                                height: '46px',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                border: '1px solid rgba(255, 255, 255, 0.3)',
+                                borderRadius: '6px',
+                                color: 'rgba(255, 255, 255, 0.94)',
+                                textDecoration: 'none',
+                                fontWeight: 600,
+                                fontSize: '15px',
+                                background: loading ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+                                cursor: loading ? 'not-allowed' : 'pointer',
+                            }}
+                        >
+                            {loading ? 'Redirecting to Google...' : 'Continue with Google'}
+                        </button>
+                    </form>
+
+                    <div style={{ marginTop: '18px' }}>
                         <button
                             onClick={onSwitchToLogin}
                             style={{
                                 background: 'none',
                                 border: 'none',
-                                color: '#667eea',
+                                color: 'rgba(255, 255, 255, 0.74)',
                                 cursor: 'pointer',
+                                fontSize: '14px',
                                 textDecoration: 'underline',
-                                fontSize: '14px'
                             }}
                         >
-                            Sign in
+                            Already have an account? Sign in
                         </button>
-                    </p>
-                </div>
-
-                <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#2a2a2a', borderRadius: '8px' }}>
-                    <p style={{ color: '#4CAF50', fontSize: '13px', margin: 0, textAlign: 'center' }}>
-                        Your first Google sign-in creates your Vadeo account and 50 starter credits locally.
-                    </p>
-                </div>
-            </div>
+                    </div>
+                </section>
+            </main>
         </div>
     );
 };

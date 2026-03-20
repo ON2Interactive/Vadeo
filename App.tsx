@@ -1104,6 +1104,10 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
   };
 
   const handleTriggerVadeoAd = () => {
+    if (!hasGenerationAccess) {
+      setShowCreditsModal(true);
+      return;
+    }
     setShowVadeoAdModal(true);
   };
 
@@ -1679,8 +1683,13 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
           <div className="flex items-center gap-1 ml-4">
             <button
               onClick={handleTriggerVadeoAd}
-              className="p-2 hover:bg-zinc-800 rounded transition-colors text-white"
-              title="Create Video Ad"
+              disabled={!hasGenerationAccess}
+              className={`p-2 rounded transition-colors ${
+                hasGenerationAccess
+                  ? 'hover:bg-zinc-800 text-white'
+                  : 'text-zinc-700 cursor-not-allowed opacity-50'
+              }`}
+              title={hasGenerationAccess ? 'Create Video Ad' : 'Upgrade to Standard or Premium'}
             >
               <Sparkles size={18} strokeWidth={1.9} fill="currentColor" />
             </button>
@@ -1757,6 +1766,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
           onToolSelect={setActiveTool}
           onRemix={handleRemix}
           onGenerateAd={handleTriggerVadeoAd}
+          canGenerateAds={hasGenerationAccess}
           activeTool={activeTool}
           imageUploadInputId={IMAGE_UPLOAD_INPUT_ID}
           videoUploadInputId={VIDEO_UPLOAD_INPUT_ID}

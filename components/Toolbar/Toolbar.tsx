@@ -29,6 +29,7 @@ interface Props {
   onToolSelect: (tool: string) => void;
   onRemix: () => void;
   onGenerateAd: () => void;
+  canGenerateAds?: boolean;
   activeTool: string;
   imageUploadInputId: string;
   videoUploadInputId: string;
@@ -39,6 +40,7 @@ const Toolbar: React.FC<Props> = ({
   onToolSelect,
   onRemix,
   onGenerateAd,
+  canGenerateAds = true,
   activeTool,
   imageUploadInputId,
   videoUploadInputId
@@ -172,11 +174,16 @@ const Toolbar: React.FC<Props> = ({
 
         <button
           onClick={onGenerateAd}
-          className="flex items-center justify-center w-10 h-10 transition-colors group relative text-white hover:text-white"
+          disabled={!canGenerateAds}
+          className={`flex items-center justify-center w-10 h-10 transition-colors group relative ${
+            canGenerateAds
+              ? 'text-white hover:text-white'
+              : 'text-zinc-700 cursor-not-allowed opacity-50'
+          }`}
         >
           <Sparkles size={18} strokeWidth={1.9} fill="currentColor" />
           <span className={tooltipClass}>
-            Generate ad
+            {canGenerateAds ? 'Generate ad' : 'Upgrade to Standard or Premium'}
           </span>
         </button>
 

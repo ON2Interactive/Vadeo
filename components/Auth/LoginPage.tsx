@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Chrome } from 'lucide-react';
 import { authHelpers } from '../../lib/supabase';
 import { useRecaptcha } from '../../hooks/useRecaptcha';
 
@@ -8,11 +9,8 @@ interface LoginPageProps {
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onSwitchToSignup }) => {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-
     const { executeRecaptcha } = useRecaptcha();
 
     const handleLogin = async (e: React.FormEvent) => {
@@ -20,7 +18,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onSwitchToSignu
         setError('');
         setLoading(true);
 
-        // Execute ReCaptcha
         const token = await executeRecaptcha('LOGIN');
         if (!token) {
             setError('Verification failed. Please try again.');
@@ -28,16 +25,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onSwitchToSignu
             return;
         }
 
-        const { data, error: authError } = await authHelpers.signIn(email, password);
-
-        if (authError) {
-            setError(authError.message);
-            setLoading(false);
-            return;
-        }
-
-        if (data.user) {
+        try {
+            await authHelpers.signInWithGoogle('/dashboard');
             onSuccess();
+        } catch (loginError: any) {
+            setError(loginError?.message || 'Could not start Google sign-in.');
+            setLoading(false);
         }
     };
 
@@ -63,57 +56,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onSwitchToSignu
                         Welcome Back
                     </h1>
                     <p style={{ color: '#888', fontSize: '14px' }}>
-                        Sign in to continue to Vadeo
+                        Sign in with Google to continue to Vadeo
                     </p>
                 </div>
 
                 <form onSubmit={handleLogin}>
-                    <div style={{ marginBottom: '20px' }}>
-                        <label style={{ display: 'block', color: '#fff', marginBottom: '8px', fontSize: '14px' }}>
-                            Email
-                        </label>
-                        <input
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                            style={{
-                                width: '100%',
-                                padding: '12px',
-                                backgroundColor: '#2a2a2a',
-                                border: '1px solid #3a3a3a',
-                                borderRadius: '8px',
-                                color: '#fff',
-                                fontSize: '14px',
-                                outline: 'none'
-                            }}
-                            placeholder="you@example.com"
-                        />
-                    </div>
-
-                    <div style={{ marginBottom: '20px' }}>
-                        <label style={{ display: 'block', color: '#fff', marginBottom: '8px', fontSize: '14px' }}>
-                            Password
-                        </label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            style={{
-                                width: '100%',
-                                padding: '12px',
-                                backgroundColor: '#2a2a2a',
-                                border: '1px solid #3a3a3a',
-                                borderRadius: '8px',
-                                color: '#fff',
-                                fontSize: '14px',
-                                outline: 'none'
-                            }}
-                            placeholder="••••••••"
-                        />
-                    </div>
-
                     {error && (
                         <div style={{
                             backgroundColor: '#ff4444',
@@ -133,17 +80,22 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onSwitchToSignu
                         style={{
                             width: '100%',
                             padding: '14px',
-                            backgroundColor: loading ? '#555' : '#667eea',
-                            color: '#fff',
-                            border: 'none',
+                            backgroundColor: loading ? '#555' : '#fff',
+                            color: '#111',
+                            border: '1px solid #3a3a3a',
                             borderRadius: '8px',
                             fontSize: '16px',
                             fontWeight: 'bold',
                             cursor: loading ? 'not-allowed' : 'pointer',
-                            transition: 'background-color 0.2s'
+                            transition: 'background-color 0.2s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '10px'
                         }}
                     >
-                        {loading ? 'Signing in...' : 'Sign In'}
+                        <Chrome size={18} />
+                        {loading ? 'Redirecting to Google...' : 'Continue with Google'}
                     </button>
                 </form>
 
@@ -161,7 +113,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onSwitchToSignu
 
                 <div style={{ marginTop: '20px', textAlign: 'center' }}>
                     <p style={{ color: '#888', fontSize: '14px' }}>
-                        Don't have an account?{' '}
+                        Need an account?{' '}
                         <button
                             onClick={onSwitchToSignup}
                             style={{
@@ -173,7 +125,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onSwitchToSignu
                                 fontSize: '14px'
                             }}
                         >
-                            Sign up
+                            Start with Google
                         </button>
                     </p>
                 </div>

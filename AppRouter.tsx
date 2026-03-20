@@ -10,6 +10,7 @@ import { AdminDashboard } from './components/Admin/AdminDashboard';
 import { AdminLoginPage } from './components/Auth/AdminLoginPage';
 import { adminHelpers } from './lib/supabase';
 import { STRIPE_CONFIG } from './stripeConfig';
+import GoogleOAuthCallbackPage from './components/Auth/GoogleOAuthCallbackPage';
 
 import { useLocation, useNavigate } from 'react-router-dom';
 import ContactPage from './components/ContactPage';
@@ -24,7 +25,7 @@ import PrivacyPage from './components/PrivacyPage';
 import CookiePage from './components/CookiePage';
 import DMCAPage from './components/DMCAPage';
 
-type View = 'landing' | 'login' | 'signup' | 'verifyEmail' | 'dashboard' | 'editor' | 'admin' | 'adminLogin' | 'contact' | 'about' | 'useCases' | 'pricing' | 'faq' | 'help' | 'terms' | 'privacy' | 'cookie' | 'dmca';
+type View = 'landing' | 'login' | 'signup' | 'verifyEmail' | 'dashboard' | 'editor' | 'admin' | 'adminLogin' | 'contact' | 'about' | 'useCases' | 'pricing' | 'faq' | 'help' | 'terms' | 'privacy' | 'cookie' | 'dmca' | 'googleCallback';
 
 const AppRouter: React.FC = () => {
     const [view, setView] = useState<View>('landing');
@@ -38,7 +39,6 @@ const AppRouter: React.FC = () => {
 
     useEffect(() => {
         checkAuth();
-        checkAdminAuth();
 
         // Check for payment success
         const params = new URLSearchParams(window.location.search);
@@ -116,6 +116,8 @@ const AppRouter: React.FC = () => {
             setView('signup');
         } else if (path === '/verify-email') {
             setView('verifyEmail');
+        } else if (path === '/auth/google/callback') {
+            setView('googleCallback');
         } else if (path === '/admin') {
             setView('admin');
         } else if (path === '/admin-login') {
@@ -130,6 +132,7 @@ const AppRouter: React.FC = () => {
         if (session) {
             const adminStatus = await adminHelpers.isUserAdmin(session.user.id);
             setIsAdmin(adminStatus);
+            setIsAdminAuthenticated(adminStatus);
 
             // Allow public pages even if logged in
             if (path === '/contact') {
@@ -202,6 +205,8 @@ const AppRouter: React.FC = () => {
                 setView('signup');
             } else if (path === '/verify-email') {
                 setView('verifyEmail');
+            } else if (path === '/auth/google/callback') {
+                setView('googleCallback');
             } else if (path === '/dashboard') {
                 setView('dashboard');
             } else if (path.startsWith('/editor')) {
@@ -213,20 +218,11 @@ const AppRouter: React.FC = () => {
         setLoading(false);
     };
 
-    const checkAdminAuth = () => {
-        const adminAuth = localStorage.getItem('admin_authenticated');
-        if (adminAuth === 'true') {
-            setIsAdminAuthenticated(true);
-        }
-    };
-
     const handleAdminLoginSuccess = () => {
-        setIsAdminAuthenticated(true);
         navigate('/admin');
     };
 
     const handleAdminLogout = () => {
-        localStorage.removeItem('admin_authenticated');
         setIsAdminAuthenticated(false);
         navigate('/admin-login');
     };
@@ -419,6 +415,10 @@ const AppRouter: React.FC = () => {
         return <EmailVerificationPage />;
     }
 
+    if (view === 'googleCallback') {
+        return <GoogleOAuthCallbackPage />;
+    }
+
     if (view === 'dashboard') {
         return (
             <Dashboard
@@ -437,7 +437,7 @@ const AppRouter: React.FC = () => {
     }
 
     if (view === 'admin') {
-        if (!isAdminAuthenticated) {
+        if (!isAdminAuthenticated || !isAdmin) {
             setView('adminLogin');
             return null;
         }

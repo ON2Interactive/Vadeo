@@ -1,80 +1,31 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { authHelpers } from '../../lib/supabase';
 import { CheckCircle, ArrowRight } from 'lucide-react';
-import { useRecaptcha } from '../../hooks/useRecaptcha';
 
 export const EmailVerificationPage: React.FC = () => {
-    const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const [verifying, setVerifying] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-    // Login Form State
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [loginError, setLoginError] = useState('');
-    const [loginLoading, setLoginLoading] = useState(false);
-    const { executeRecaptcha } = useRecaptcha();
-
     useEffect(() => {
         const checkSession = async () => {
-            // Give Supabase a moment to process the hash fragment
-            setTimeout(async () => {
-                try {
-                    const session = await authHelpers.getSession();
-
-                    if (session) {
-                        setIsAuthenticated(true);
-                        setVerifying(false);
-                    } else {
-                        // Check if we have an error in the URL hash (Supabase puts it there)
-                        const hash = window.location.hash;
-                        if (hash && hash.includes('error_description')) {
-                            const params = new URLSearchParams(hash.substring(1)); // remove #
-                            const errorDescription = params.get('error_description');
-                            setError(errorDescription || 'Verification failed');
-                        } else {
-                            // Verified but not logged in
-                            setVerifying(false);
-                        }
-                    }
-                } catch (err: any) {
-                    console.error('Verification check error:', err);
-                    setError(err.message || 'An error occurred during verification');
+            try {
+                const session = await authHelpers.getSession();
+                if (session) {
+                    setIsAuthenticated(true);
                 }
-            }, 1000);
+                setVerifying(false);
+            } catch (err: any) {
+                console.error('Verification check error:', err);
+                setError(err.message || 'An error occurred while loading your session');
+                setVerifying(false);
+            }
         };
 
         checkSession();
     }, []);
-
-    const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoginError('');
-        setLoginLoading(true);
-
-        // Execute ReCaptcha
-        const token = await executeRecaptcha('LOGIN');
-        if (!token) {
-            setLoginError('Verification failed. Please try again.');
-            setLoginLoading(false);
-            return;
-        }
-
-        const { data, error: authError } = await authHelpers.signIn(email, password);
-
-        if (authError) {
-            setLoginError(authError.message);
-            setLoginLoading(false);
-            return;
-        }
-
-        if (data.user) {
-            navigate('/dashboard');
-        }
-    };
 
     return (
         <div style={{
@@ -104,7 +55,7 @@ export const EmailVerificationPage: React.FC = () => {
                         <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mb-6">
                             <span className="text-3xl">⚠️</span>
                         </div>
-                        <h2 className="text-2xl font-bold text-white mb-4">Verification Issue</h2>
+                        <h2 className="text-2xl font-bold text-white mb-4">Session Issue</h2>
                         <p className="text-zinc-400 mb-8">{error}</p>
                         <button
                             onClick={() => navigate('/signin')}
@@ -136,91 +87,14 @@ export const EmailVerificationPage: React.FC = () => {
                         ) : (
                             <div className="w-full">
                                 <p className="text-zinc-400 mb-6">
-                                    Please sign in to continue to your dashboard.
+                                    You are not signed in yet. Continue with Google to reach your dashboard.
                                 </p>
-
-                                <form onSubmit={handleLogin} className="text-left">
-                                    <div style={{ marginBottom: '15px' }}>
-                                        <label style={{ display: 'block', color: '#fff', marginBottom: '8px', fontSize: '14px' }}>
-                                            Email
-                                        </label>
-                                        <input
-                                            type="email"
-                                            value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
-                                            required
-                                            style={{
-                                                width: '100%',
-                                                padding: '12px',
-                                                backgroundColor: '#2a2a2a',
-                                                border: '1px solid #3a3a3a',
-                                                borderRadius: '8px',
-                                                color: '#fff',
-                                                fontSize: '14px',
-                                                outline: 'none'
-                                            }}
-                                            placeholder="you@example.com"
-                                        />
-                                    </div>
-
-                                    <div style={{ marginBottom: '20px' }}>
-                                        <label style={{ display: 'block', color: '#fff', marginBottom: '8px', fontSize: '14px' }}>
-                                            Password
-                                        </label>
-                                        <input
-                                            type="password"
-                                            value={password}
-                                            onChange={(e) => setPassword(e.target.value)}
-                                            required
-                                            style={{
-                                                width: '100%',
-                                                padding: '12px',
-                                                backgroundColor: '#2a2a2a',
-                                                border: '1px solid #3a3a3a',
-                                                borderRadius: '8px',
-                                                color: '#fff',
-                                                fontSize: '14px',
-                                                outline: 'none'
-                                            }}
-                                            placeholder="••••••••"
-                                        />
-                                    </div>
-
-                                    {loginError && (
-                                        <div style={{
-                                            backgroundColor: '#ff4444',
-                                            color: '#fff',
-                                            padding: '12px',
-                                            borderRadius: '8px',
-                                            marginBottom: '20px',
-                                            fontSize: '14px'
-                                        }}>
-                                            {loginError}
-                                        </div>
-                                    )}
-
-                                    <button
-                                        type="submit"
-                                        disabled={loginLoading}
-                                        style={{
-                                            width: '100%',
-                                            padding: '14px',
-                                            backgroundColor: loginLoading ? '#555' : '#667eea',
-                                            color: '#fff',
-                                            border: 'none',
-                                            borderRadius: '8px',
-                                            fontSize: '16px',
-                                            fontWeight: 'bold',
-                                            cursor: loginLoading ? 'not-allowed' : 'pointer',
-                                            transition: 'background-color 0.2s',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center'
-                                        }}
-                                    >
-                                        {loginLoading ? 'Signing in...' : 'Sign In'}
-                                    </button>
-                                </form>
+                                <button
+                                    onClick={() => navigate('/signin')}
+                                    className="bg-white text-black px-8 py-3 rounded-full font-bold hover:bg-gray-200 transition-colors"
+                                >
+                                    Go to Sign In
+                                </button>
                             </div>
                         )}
                     </div>

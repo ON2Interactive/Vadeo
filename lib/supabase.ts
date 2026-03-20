@@ -1,335 +1,330 @@
-import { createClient } from '@supabase/supabase-js';
+import { localProjectStore } from './localProjects';
+import { localMediaStore } from './localMedia';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const hasSupabaseConfig = Boolean(supabaseUrl && supabaseAnonKey);
+type AuthUser = {
+  id: string;
+  email: string;
+  full_name?: string;
+  picture?: string;
+  is_admin?: boolean;
+};
 
-if (!hasSupabaseConfig) {
-    console.warn('Supabase environment variables are missing. Auth, storage, and database-backed features are disabled.');
-}
+type SessionResponse = {
+  authenticated: boolean;
+  user: AuthUser | null;
+};
 
-export const supabase = hasSupabaseConfig
-    ? createClient(supabaseUrl, supabaseAnonKey)
-    : null;
+const PROFILE_STORAGE_KEY = 'vadeo_user_profiles';
 
-// Auth helper functions
+const canUseStorage = () => typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+
+const readProfiles = (): Record<string, any> => {
+  if (!canUseStorage()) return {};
+
+  try {
+    const raw = window.localStorage.getItem(PROFILE_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch (error) {
+    console.error('Failed to read local profiles:', error);
+    return {};
+  }
+};
+
+const writeProfiles = (profiles: Record<string, any>) => {
+  if (!canUseStorage()) return;
+
+  try {
+    window.localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profiles));
+  } catch (error) {
+    console.error('Failed to write local profiles:', error);
+  }
+};
+
+const fetchJson = async <T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> => {
+  const response = await fetch(input, {
+    credentials: 'include',
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(init?.headers || {}),
+    },
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.error || `Request failed: ${response.status}`);
+  }
+
+  return payload as T;
+};
+
+const getStoredProfile = (user: AuthUser | null) => {
+  if (!user) return null;
+  const profiles = readProfiles();
+  return profiles[user.id] || null;
+};
+
+const ensureStoredProfile = (user: AuthUser) => {
+  const profiles = readProfiles();
+  if (!profiles[user.id]) {
+    profiles[user.id] = {
+      id: user.id,
+      email: user.email,
+      full_name: user.full_name || user.email.split('@')[0],
+      credits: 50,
+      is_admin: Boolean(user.is_admin),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    writeProfiles(profiles);
+  } else {
+    profiles[user.id] = {
+      ...profiles[user.id],
+      email: user.email,
+      full_name: user.full_name || profiles[user.id].full_name,
+      is_admin: Boolean(user.is_admin),
+      updated_at: new Date().toISOString(),
+    };
+    writeProfiles(profiles);
+  }
+  return profiles[user.id];
+};
+
+const buildSession = async () => {
+  try {
+    return await fetchJson<SessionResponse>('/api/auth/session');
+  } catch (error) {
+    console.error('Failed to fetch session:', error);
+    return { authenticated: false, user: null };
+  }
+};
+
+const redirectToGoogle = (redirectPath = '/dashboard') => {
+  if (typeof window === 'undefined') return;
+
+  const target = new URL('/api/auth/google/start', window.location.origin);
+  target.searchParams.set('redirect', redirectPath);
+  window.location.href = target.toString();
+};
+
+export const supabase = null;
+
 export const authHelpers = {
-    async signUp(email: string, password: string, fullName: string) {
-        if (!supabase) return { data: null, error: new Error('Supabase is not configured') };
-        const { data, error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-                data: {
-                    full_name: fullName,
-                },
-            },
-        });
-        return { data, error };
-    },
+  async signUp() {
+    redirectToGoogle('/dashboard');
+    return { data: null, error: null };
+  },
 
-    async signIn(email: string, password: string) {
-        if (!supabase) return { data: null, error: new Error('Supabase is not configured') };
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
-        return { data, error };
-    },
+  async signIn() {
+    redirectToGoogle('/dashboard');
+    return { data: null, error: null };
+  },
 
-    async signOut() {
-        if (!supabase) return { error: new Error('Supabase is not configured') };
-        const { error } = await supabase.auth.signOut();
-        return { error };
-    },
+  async signInWithGoogle(redirectPath = '/dashboard') {
+    redirectToGoogle(redirectPath);
+  },
 
-    async getCurrentUser() {
-        if (!supabase) return null;
-        const { data: { user } } = await supabase.auth.getUser();
-        return user;
-    },
-
-    async getSession() {
-        if (!supabase) return null;
-        const { data: { session } } = await supabase.auth.getSession();
-        return session;
-    },
-};
-
-// Database helper functions
-export const dbHelpers = {
-    async getUserProfile(userId: string) {
-        if (!supabase) return { data: null, error: new Error('Supabase is not configured') };
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', userId)
-            .single();
-        return { data, error };
-    },
-
-    async updateUserCredits(userId: string, credits: number) {
-        if (!supabase) return { data: null, error: new Error('Supabase is not configured') };
-        const { data, error } = await supabase
-            .from('profiles')
-            .update({ credits, updated_at: new Date().toISOString() })
-            .eq('id', userId)
-            .select()
-            .single();
-        return { data, error };
-    },
-
-    async initUserProfile(userId: string) {
-        if (!supabase) return { data: null, error: null };
-        // Check if profile exists
-        const { data: existingProfile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', userId)
-            .single();
-
-        if (existingProfile) {
-            return { data: existingProfile, error: null };
-        }
-
-        // Create new profile with 50 free credits
-        const { data, error } = await supabase
-            .from('profiles')
-            .insert({
-                id: userId,
-                credits: 50,
-                is_admin: false,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            })
-            .select()
-            .single();
-
-        if (error) {
-            console.error('Error in initUserProfile:', error);
-        }
-
-        return { data, error };
-    },
-
-    async getUserProjects(userId: string) {
-        if (!supabase) return { data: [], error: null };
-        const { data, error } = await supabase
-            .from('projects')
-            .select('*')
-            .eq('user_id', userId)
-            .order('updated_at', { ascending: false });
-        return { data, error };
-    },
-
-    async saveProject(userId: string, projectName: string, editorState: any, thumbnail?: string) {
-        if (!supabase) return { data: null, error: new Error('Supabase is not configured') };
-        const { data, error } = await supabase
-            .from('projects')
-            .insert({
-                user_id: userId,
-                name: projectName,
-                editor_state: editorState,
-                thumbnail,
-            })
-            .select()
-            .single();
-        return { data, error };
-    },
-
-    async updateProject(projectId: string, projectName: string, editorState: any, thumbnail?: string) {
-        if (!supabase) return { data: null, error: new Error('Supabase is not configured') };
-        const { data, error } = await supabase
-            .from('projects')
-            .update({
-                name: projectName,
-                editor_state: editorState,
-                thumbnail,
-                updated_at: new Date().toISOString(),
-            })
-            .eq('id', projectId)
-            .select()
-            .single();
-        return { data, error };
-    },
-
-    async deleteProject(projectId: string) {
-        if (!supabase) return { error: new Error('Supabase is not configured') };
-        const { error } = await supabase
-            .from('projects')
-            .delete()
-            .eq('id', projectId);
-        return { error };
-    },
-
-    async getProject(projectId: string) {
-        if (!supabase) return { data: null, error: new Error('Supabase is not configured') };
-        const { data, error } = await supabase
-            .from('projects')
-            .select('*')
-            .eq('id', projectId)
-            .single();
-        return { data, error };
-    },
-
-    async sendEmail(payload: { to: string, subject: string, message: string, type: 'contact' | 'signup' | 'purchase' }) {
-        const response = await fetch('/api/send-email', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ message: 'Failed to send email' }));
-            console.error('Email API Error:', error);
-            throw new Error(error.message || 'Failed to send email');
-        }
-
-        return response.json();
-    },
-};
-
-// Storage helper functions
-export const storageHelpers = {
-    async uploadVideo(userId: string, file: File, projectId: string) {
-        if (!supabase) return { data: null, error: new Error('Supabase is not configured') };
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${userId}/${projectId}/${Date.now()}.${fileExt}`;
-
-        const { data, error } = await supabase.storage
-            .from('project-media')
-            .upload(fileName, file, {
-                cacheControl: '3600',
-                upsert: false
-            });
-
-        if (error) {
-            console.error('Upload error:', error);
-            return { data: null, error };
-        }
-
-        // Get public URL
-        const { data: { publicUrl } } = supabase.storage
-            .from('project-media')
-            .getPublicUrl(fileName);
-
-        return { data: { path: fileName, url: publicUrl }, error: null };
-    },
-
-    async deleteVideo(filePath: string) {
-        if (!supabase) return { error: new Error('Supabase is not configured') };
-        const { error } = await supabase.storage
-            .from('project-media')
-            .remove([filePath]);
-
-        return { error };
-    },
-
-    getPublicUrl(filePath: string) {
-        if (!supabase) return '';
-        const { data } = supabase.storage
-            .from('project-media')
-            .getPublicUrl(filePath);
-
-        return data.publicUrl;
+  async signOut() {
+    try {
+      await fetchJson('/api/auth/logout', { method: 'POST' });
+      return { error: null };
+    } catch (error) {
+      return { error };
     }
+  },
+
+  async getCurrentUser() {
+    const session = await buildSession();
+    return session.user;
+  },
+
+  async getSession() {
+    const session = await buildSession();
+    if (!session.user) return null;
+
+    return {
+      user: session.user,
+    };
+  },
 };
 
-// Admin helper functions
+export const dbHelpers = {
+  async getUserProfile(userId: string) {
+    const session = await buildSession();
+    const user = session.user;
+    if (!user || user.id !== userId) {
+      return { data: null, error: new Error('User is not authenticated') };
+    }
+
+    const profile = ensureStoredProfile(user);
+    return { data: profile, error: null };
+  },
+
+  async updateUserCredits(userId: string, credits: number) {
+    const profiles = readProfiles();
+    const existing = profiles[userId];
+    if (!existing) {
+      return { data: null, error: new Error('Profile not found') };
+    }
+
+    profiles[userId] = {
+      ...existing,
+      credits,
+      updated_at: new Date().toISOString(),
+    };
+    writeProfiles(profiles);
+    return { data: profiles[userId], error: null };
+  },
+
+  async initUserProfile(userId: string) {
+    const session = await buildSession();
+    const user = session.user;
+    if (!user || user.id !== userId) {
+      return { data: null, error: new Error('User is not authenticated') };
+    }
+
+    const profile = ensureStoredProfile(user);
+    return { data: profile, error: null };
+  },
+
+  async getUserProjects(userId: string) {
+    const session = await buildSession();
+    if (!session.user || session.user.id !== userId) {
+      return { data: [], error: null };
+    }
+
+    const data = localProjectStore.list();
+    return { data, error: null };
+  },
+
+  async saveProject(userId: string, projectName: string, editorState: any, thumbnail?: string) {
+    const session = await buildSession();
+    if (!session.user || session.user.id !== userId) {
+      return { data: null, error: new Error('User is not authenticated') };
+    }
+
+    const id = crypto.randomUUID();
+    const data = await localProjectStore.save({
+      id,
+      name: projectName,
+      editorState,
+      thumbnail,
+    });
+    return { data, error: null };
+  },
+
+  async updateProject(projectId: string, projectName: string, editorState: any, thumbnail?: string) {
+    const data = await localProjectStore.save({
+      id: projectId,
+      name: projectName,
+      editorState,
+      thumbnail,
+    });
+    return { data, error: null };
+  },
+
+  async deleteProject(projectId: string) {
+    localProjectStore.delete(projectId);
+    return { error: null };
+  },
+
+  async getProject(projectId: string) {
+    const data = await localProjectStore.get(projectId);
+    return { data, error: null };
+  },
+
+  async sendEmail(payload: { to: string, subject: string, message: string, type: 'contact' | 'signup' | 'purchase' }) {
+    return fetchJson('/api/send-email', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+};
+
+export const storageHelpers = {
+  async uploadVideo(_userId: string, file: File, projectId: string) {
+    try {
+      const objectUrl = URL.createObjectURL(file);
+      const persistedUrl = await localMediaStore.persistBlobUrl(objectUrl);
+      URL.revokeObjectURL(objectUrl);
+
+      return {
+        data: {
+          path: `${projectId}/${file.name}`,
+          url: persistedUrl,
+        },
+        error: null,
+      };
+    } catch (error) {
+      console.error('Local video persistence failed:', error);
+      return { data: null, error };
+    }
+  },
+
+  async deleteVideo(_filePath: string) {
+    return { error: null };
+  },
+
+  getPublicUrl(filePath: string) {
+    return filePath;
+  }
+};
+
 export const adminHelpers = {
-    async getAllUsers() {
-        if (!supabase) return { data: [], error: null };
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .order('created_at', { ascending: false });
-        return { data, error };
-    },
+  async getAllUsers() {
+    const profiles = Object.values(readProfiles());
+    return { data: profiles, error: null };
+  },
 
-    async getUserStats() {
-        if (!supabase) {
-            return {
-                data: {
-                    totalUsers: 0,
-                    totalCredits: 0,
-                    joinsToday: 0,
-                },
-                error: null,
-            };
-        }
-        const { data: users, error } = await supabase
-            .from('profiles')
-            .select('credits, created_at');
+  async getUserStats() {
+    const users: any[] = Object.values(readProfiles());
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-        if (error) return { data: null, error };
+    return {
+      data: {
+        totalUsers: users.length,
+        totalCredits: users.reduce((sum, user) => sum + (user.credits || 0), 0),
+        joinsToday: users.filter((user) => new Date(user.created_at) >= today).length,
+      },
+      error: null,
+    };
+  },
 
-        const totalUsers = users?.length || 0;
-        const totalCredits = users?.reduce((sum, user) => sum + (user.credits || 0), 0) || 0;
+  async updateUserCredits(userId: string, credits: number) {
+    return dbHelpers.updateUserCredits(userId, credits);
+  },
 
-        // Count users who joined today
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const joinsToday = users?.filter(user => {
-            const createdDate = new Date(user.created_at);
-            return createdDate >= today;
-        }).length || 0;
+  async deleteUser(userId: string) {
+    const profiles = readProfiles();
+    delete profiles[userId];
+    writeProfiles(profiles);
+    return { error: null };
+  },
 
-        return {
-            data: {
-                totalUsers,
-                totalCredits,
-                joinsToday,
-            },
-            error: null,
-        };
-    },
+  async toggleAdminStatus(userId: string, isAdmin: boolean) {
+    const profiles = readProfiles();
+    const existing = profiles[userId];
+    if (!existing) {
+      return { data: null, error: new Error('Profile not found') };
+    }
 
-    async updateUserCredits(userId: string, credits: number) {
-        if (!supabase) return { data: null, error: new Error('Supabase is not configured') };
-        const { data, error } = await supabase
-            .from('profiles')
-            .update({ credits, updated_at: new Date().toISOString() })
-            .eq('id', userId)
-            .select()
-            .single();
-        return { data, error };
-    },
+    profiles[userId] = {
+      ...existing,
+      is_admin: isAdmin,
+      updated_at: new Date().toISOString(),
+    };
+    writeProfiles(profiles);
+    return { data: profiles[userId], error: null };
+  },
 
-    async deleteUser(userId: string) {
-        if (!supabase) return { error: new Error('Supabase is not configured') };
-        // Use RPC to bypass RLS issues for admin deletes
-        const { error } = await supabase.rpc('admin_delete_user', {
-            target_user_id: userId
-        });
+  async isUserAdmin(userId: string) {
+    const session = await buildSession();
+    if (!session.user || session.user.id !== userId) return false;
 
-        if (error) {
-            console.error("RPC Delete failed:", error);
-        }
-        return { error };
-    },
-
-    async toggleAdminStatus(userId: string, isAdmin: boolean) {
-        if (!supabase) return { data: null, error: new Error('Supabase is not configured') };
-        const { data, error } = await supabase
-            .from('profiles')
-            .update({ is_admin: isAdmin, updated_at: new Date().toISOString() })
-            .eq('id', userId)
-            .select()
-            .single();
-        return { data, error };
-    },
-
-    async isUserAdmin(userId: string) {
-        if (!supabase) return false;
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('is_admin')
-            .eq('id', userId)
-            .single();
-
-        if (error) return false;
-        return data?.is_admin || false;
-    },
+    const profile = getStoredProfile(session.user);
+    return Boolean(session.user.is_admin || profile?.is_admin);
+  },
 };

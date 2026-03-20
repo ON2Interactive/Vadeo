@@ -44,17 +44,17 @@ const TermsPage: React.FC<TermsPageProps> = ({ onStartEditing }) => {
                     <div className="prose prose-invert max-w-none prose-headings:text-zinc-100 prose-p:text-zinc-400 prose-li:text-zinc-400">
                         <h3 className="text-2xl font-bold mb-6 mt-0">1. Acceptance of Terms</h3>
                         <p className="mb-6">
-                            By accessing or using Batcho ("the Service"), you agree to be bound by these Terms of Use ("Terms").
+                            By accessing or using Vadeo ("the Service"), you agree to be bound by these Terms of Use ("Terms").
                             If you do not agree, do not use the Service.
                         </p>
                         <p className="mb-12">
-                            Batcho reserves the right to update or modify these Terms at any time.
+                            Vadeo reserves the right to update or modify these Terms at any time.
                             Your continued use of the Service constitutes acceptance of any changes.
                         </p>
 
                         <h3 className="text-2xl font-bold mb-6 mt-12">2. Description of Service</h3>
                         <p className="mb-6">
-                            Batcho is an online platform that allows users to upload images, enhance them using AI-powered tools, and download or save the results.
+                            Vadeo is an online workspace that allows users to upload images and video, design ad scenes, generate video outputs with AI-powered tools, and export or save the results.
                         </p>
                         <p className="mb-12">
                             We may update, improve, or discontinue parts of the Service at any time.
@@ -77,16 +77,17 @@ const TermsPage: React.FC<TermsPageProps> = ({ onStartEditing }) => {
                         <h4 className="text-xl font-semibold mb-4 mt-8">4.1 Ownership</h4>
                         <p className="mb-6">
                             You retain all rights to the images and content you upload ("User Content").
-                            Batcho does not claim ownership over your uploaded or generated images.
+                            Vadeo does not claim ownership over your uploaded or generated content.
                         </p>
 
                         <h4 className="text-xl font-semibold mb-4 mt-8">4.2 License to Process Your Content</h4>
                         <p className="mb-4">
-                            By uploading content to Batcho, you grant us a limited license to:
+                            By uploading content to Vadeo, you grant us a limited license to:
                         </p>
                         <ul className="list-disc pl-5 space-y-2 mb-6">
-                            <li>Process and enhance your images</li>
-                            <li>Store them temporarily or as part of your saved images</li>
+                            <li>Process your uploaded images and video</li>
+                            <li>Generate derived outputs requested by you</li>
+                            <li>Store content temporarily or as part of your saved projects</li>
                             <li>Display them to you within your account</li>
                         </ul>
                         <p className="mb-4">
@@ -111,7 +112,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onStartEditing }) => {
                             <li>Contains sensitive personal data (e.g., passports, IDs)</li>
                         </ul>
                         <p className="mb-12">
-                            Batcho reserves the right to remove content that violates these Terms.
+                            Vadeo reserves the right to remove content that violates these Terms.
                         </p>
 
                         <h3 className="text-2xl font-bold mb-6 mt-12">5. Permitted Use</h3>
@@ -129,18 +130,18 @@ const TermsPage: React.FC<TermsPageProps> = ({ onStartEditing }) => {
 
                         <h3 className="text-2xl font-bold mb-6 mt-12">6. Image Retention</h3>
                         <ul className="list-disc pl-5 space-y-2 mb-6">
-                            <li>Uploaded images are stored temporarily for processing.</li>
-                            <li>Saved images remain in your account until you delete them.</li>
+                            <li>Uploaded media may be stored temporarily for processing and generation.</li>
+                            <li>Saved projects and outputs remain in your account until you delete them, subject to plan limits and storage policies.</li>
                             <li>We may provide tools to automatically remove older files to manage storage.</li>
                         </ul>
                         <p className="mb-12">
-                            Batcho is not a long-term file storage service; always keep your own backups.
+                            Vadeo is not a long-term file storage service; always keep your own backups.
                         </p>
 
                         <h3 className="text-2xl font-bold mb-6 mt-12">7. Service Availability</h3>
                         <p className="mb-6">
                             We strive to maintain uptime and reliability but do not guarantee uninterrupted access.
-                            Batcho is provided on an "as-is" and "as-available" basis.
+                            Vadeo is provided on an "as-is" and "as-available" basis.
                         </p>
                         <p className="mb-12">
                             We may suspend or throttle certain features for maintenance, compliance, or performance reasons.
@@ -148,7 +149,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onStartEditing }) => {
 
                         <h3 className="text-2xl font-bold mb-6 mt-12">8. Fees & Payments</h3>
                         <p className="mb-6">
-                            If Batcho offers paid plans or credits, all fees will be clearly stated.
+                            If Vadeo offers paid plans or subscriptions, all fees will be clearly stated.
                             By subscribing or making a purchase, you agree to the posted pricing and billing terms.
                         </p>
                         <p className="mb-12">
@@ -174,10 +175,10 @@ const TermsPage: React.FC<TermsPageProps> = ({ onStartEditing }) => {
 
                         <h3 className="text-2xl font-bold mb-6 mt-12">10. Disclaimer of Warranties</h3>
                         <p className="mb-4">
-                            Batcho makes no warranties, express or implied, regarding the Service, including:
+                            Vadeo makes no warranties, express or implied, regarding the Service, including:
                         </p>
                         <ul className="list-disc pl-5 space-y-2 mb-6">
-                            <li>Accuracy of enhancements</li>
+                            <li>Accuracy of generated or edited outputs</li>
                             <li>Fitness for a particular purpose</li>
                             <li>Availability or performance</li>
                             <li>Non-infringement</li>
@@ -188,12 +189,12 @@ const TermsPage: React.FC<TermsPageProps> = ({ onStartEditing }) => {
 
                         <h3 className="text-2xl font-bold mb-6 mt-12">11. Limitation of Liability</h3>
                         <p className="mb-4">
-                            To the fullest extent permitted by law, Batcho is not liable for:
+                            To the fullest extent permitted by law, Vadeo is not liable for:
                         </p>
                         <ul className="list-disc pl-5 space-y-2 mb-6">
                             <li>Loss of data</li>
                             <li>Service interruptions</li>
-                            <li>Inaccurate output or image transformations</li>
+                            <li>Inaccurate output or media transformations</li>
                             <li>Unauthorized access to your account</li>
                             <li>Any indirect, incidental, or consequential damages</li>
                         </ul>
@@ -203,7 +204,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onStartEditing }) => {
 
                         <h3 className="text-2xl font-bold mb-6 mt-12">12. Indemnification</h3>
                         <p className="mb-4">
-                            You agree to indemnify and hold Batcho harmless from any claims arising from:
+                            You agree to indemnify and hold Vadeo harmless from any claims arising from:
                         </p>
                         <ul className="list-disc pl-5 space-y-2 mb-12">
                             <li>Your uploaded content</li>
@@ -221,7 +222,7 @@ const TermsPage: React.FC<TermsPageProps> = ({ onStartEditing }) => {
                         <p className="mb-6">
                             If you have questions about these Terms, please contact us at:
                             <br />
-                            <a href="mailto:support@batchocanvas.com" className="text-blue-400 hover:text-blue-300 transition-colors">support@batchocanvas.com</a>
+                            <a href="mailto:hello@vadeo.cloud" className="text-blue-400 hover:text-blue-300 transition-colors">hello@vadeo.cloud</a>
                         </p>
                     </div>
 

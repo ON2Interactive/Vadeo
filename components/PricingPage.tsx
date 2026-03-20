@@ -43,7 +43,7 @@ const PricingPage: React.FC<PricingPageProps> = ({ onBuyCredits }) => {
             {/* Hero Section */}
             <section className="relative z-10 px-8 py-[100px] min-h-[800px] flex flex-col items-center justify-center max-w-[1400px] mx-auto text-center">
                 <h1 className="text-[36px] max-[480px]:text-[18px] max-[480px]:leading-[1.2] font-black mb-6">
-                    Subscription Pricing
+                    Pricing
                 </h1>
                 <p className="text-base text-zinc-400 max-w-2xl mx-auto leading-relaxed mb-12">
                     Start with workspace access, then upgrade for 1080p or 4K video generations as your production needs grow.

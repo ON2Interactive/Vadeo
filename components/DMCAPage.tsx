@@ -43,8 +43,8 @@ const DMCAPage: React.FC<DMCAPageProps> = ({ onStartEditing }) => {
 
                     <div className="prose prose-invert max-w-none prose-headings:text-zinc-100 prose-p:text-zinc-400 prose-li:text-zinc-400">
                         <p className="mb-6">
-                            Batcho respects the intellectual property rights of others and expects all users to do the same.
-                            If you believe that content uploaded or processed through Batcho infringes your copyright, you may submit a formal DMCA Takedown Notice.
+                            Vadeo respects the intellectual property rights of others and expects all users to do the same.
+                            If you believe that content uploaded, generated, or processed through Vadeo infringes your copyright, you may submit a formal DMCA Takedown Notice.
                         </p>
                         <p className="mb-12">
                             We will review all notices and respond according to applicable laws.
@@ -52,7 +52,7 @@ const DMCAPage: React.FC<DMCAPageProps> = ({ onStartEditing }) => {
 
                         <h3 className="text-2xl font-bold mb-6 mt-12">1. Reporting Copyright Infringement</h3>
                         <p className="mb-6">
-                            If you believe material on Batcho infringes your copyright, please send a written DMCA notice containing the following information:
+                            If you believe material on Vadeo infringes your copyright, please send a written DMCA notice containing the following information:
                         </p>
                         <ol className="list-decimal pl-5 space-y-4 mb-4">
                             <li>
@@ -63,7 +63,7 @@ const DMCAPage: React.FC<DMCAPageProps> = ({ onStartEditing }) => {
                             <li>
                                 <strong>Identification of the specific content you believe is infringing.</strong>
                                 <br />
-                                Include image URLs, descriptions, or account identifiers so we can locate the material.
+                                Include relevant URLs, descriptions, project references, or account identifiers so we can locate the material.
                             </li>
                             <li>
                                 A statement that you have a good-faith belief that the use of the material is not authorized by the copyright owner, its agent, or the law.
@@ -90,7 +90,7 @@ const DMCAPage: React.FC<DMCAPageProps> = ({ onStartEditing }) => {
                             Please send DMCA notices to:
                         </p>
                         <p className="mb-6">
-                            <a href="mailto:support@batchocanvas.com" className="text-blue-400 hover:text-blue-300 transition-colors">support@batchocanvas.com</a>
+                            <a href="mailto:hello@vadeo.cloud" className="text-blue-400 hover:text-blue-300 transition-colors">hello@vadeo.cloud</a>
                         </p>
                         <p className="mb-12">
                             We may request additional information if necessary to confirm the claim.
@@ -126,7 +126,7 @@ const DMCAPage: React.FC<DMCAPageProps> = ({ onStartEditing }) => {
 
                         <h3 className="text-2xl font-bold mb-6 mt-12">5. Repeat Infringers</h3>
                         <p className="mb-12">
-                            Batcho may suspend or terminate accounts of users who repeatedly upload infringing content.
+                            Vadeo may suspend or terminate accounts of users who repeatedly upload infringing content.
                         </p>
 
                         <h3 className="text-2xl font-bold mb-6 mt-12">6. No Legal Advice</h3>

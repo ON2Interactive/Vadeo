@@ -5,6 +5,9 @@ import Footer from './components/Footer';
 import { dbHelpers } from './lib/supabase';
 import { useRecaptcha } from './hooks/useRecaptcha';
 import heroBackgroundVideo from './Assets/HeroBG.mp4';
+import generateDemoVideo from './Assets/V-Demo-01.mp4';
+import designWorkflowImage from './Screenshots/Design-01.png';
+import generateWorkflowImage from './Screenshots/Generate.png';
 import workspaceUiImage from './Screenshots/UI.png';
 
 interface NewLandingPageProps {
@@ -22,38 +25,60 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
     }, []);
 
     const imageRef = React.useRef<HTMLImageElement>(null);
+    const designImageRef = React.useRef<HTMLImageElement>(null);
+    const generateImageRef = React.useRef<HTMLImageElement>(null);
+    const generateVideoRef = React.useRef<HTMLVideoElement>(null);
     const [scrollStyles, setScrollStyles] = useState({
+        opacity: 0,
+        transform: 'translateY(40px) scale(0.95)'
+    });
+    const [designScrollStyles, setDesignScrollStyles] = useState({
+        opacity: 0,
+        transform: 'translateY(40px) scale(0.95)'
+    });
+    const [generateScrollStyles, setGenerateScrollStyles] = useState({
+        opacity: 0,
+        transform: 'translateY(40px) scale(0.95)'
+    });
+    const [generateVideoScrollStyles, setGenerateVideoScrollStyles] = useState({
         opacity: 0,
         transform: 'translateY(40px) scale(0.95)'
     });
 
     React.useEffect(() => {
-        const handleScroll = () => {
-            if (!imageRef.current) return;
-            const rect = imageRef.current.getBoundingClientRect();
+        const getScrollStyles = (element: HTMLElement | null) => {
+            if (!element) {
+                return {
+                    opacity: 0,
+                    transform: 'translateY(40px) scale(0.95)'
+                };
+            }
+
+            const rect = element.getBoundingClientRect();
             const windowHeight = window.innerHeight;
-            
-            // Calculate how close the element is to the center of the viewport
             const elementCenter = rect.top + rect.height / 2;
             const viewCenter = windowHeight / 2;
             const distanceFromCenter = Math.abs(elementCenter - viewCenter);
-            
-            // Fade range: starts fading when 40% away from center
             const fadeRange = windowHeight * 0.5;
-            
+
             let opacity = 1 - (distanceFromCenter / fadeRange);
             opacity = Math.max(0, Math.min(1, opacity));
-            
-            // Apply a slight parabolic curve for smoother fade
+
             const smoothOpacity = Math.pow(opacity, 1.5);
-            
             const translateY = 40 * (1 - smoothOpacity);
             const scale = 0.95 + (0.05 * smoothOpacity);
 
-            setScrollStyles({
+            return {
                 opacity: smoothOpacity,
                 transform: `translateY(${translateY}px) scale(${scale})`
-            });
+            };
+        };
+
+        const handleScroll = () => {
+            setScrollStyles(getScrollStyles(imageRef.current));
+            setDesignScrollStyles(getScrollStyles(designImageRef.current));
+            setGenerateScrollStyles(getScrollStyles(generateImageRef.current));
+            setGenerateVideoScrollStyles(getScrollStyles(generateVideoRef.current));
         };
 
         window.addEventListener('scroll', handleScroll, { passive: true });
@@ -173,45 +198,91 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
                 </div>
             </section>
 
-            <section className="relative z-10 min-h-[600px] bg-white px-8 py-24 text-black">
-                <div className="mx-auto max-w-4xl">
-                    <div className="text-center">
-                        <h2 className="text-[16px] font-bold tracking-[-0.04em] text-black sm:text-[24px] md:text-[30px] lg:text-[36px]">
-                            How It Works
+            <section className="relative z-10 px-6 py-20 sm:px-8 sm:py-24">
+                <div className="mx-auto max-w-[1400px] text-center">
+                    <div className="mx-auto max-w-5xl">
+                        <h2 className={sectionH2ClassName}>
+                            Design
                         </h2>
-                        <p className="mt-4 text-[16px] leading-relaxed text-black/70">
-                            Vadeo is built around a simple workflow: design your ad, then generate the motion you need.
+                        <h3 className="mt-4 text-[16px] font-semibold text-white sm:text-[18px] lg:text-[20px]">
+                            Build Your Ad Inside One Workspace
+                        </h3>
+                    </div>
+
+                    <div className="mt-10 overflow-hidden rounded-[18px] border border-white/10 bg-zinc-950 shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
+                        <img
+                            ref={designImageRef}
+                            src={designWorkflowImage}
+                            alt="Design workflow in Vadeo"
+                            className="w-full h-auto transition-all duration-300 ease-out"
+                            style={{
+                                opacity: designScrollStyles.opacity,
+                                transform: designScrollStyles.transform,
+                                willChange: 'opacity, transform'
+                            }}
+                        />
+                    </div>
+
+                    <div className="mx-auto mt-8 max-w-5xl space-y-3 text-center text-[16px] leading-relaxed text-white/70">
+                        <p>
+                            Upload product images or video, arrange scenes on the canvas, and build the structure of your ad inside one workspace.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <section className="relative z-10 px-6 py-20 sm:px-8 sm:py-24">
+                <div className="mx-auto max-w-[1400px] text-center">
+                    <div className="mx-auto max-w-5xl">
+                        <h2 className={sectionH2ClassName}>
+                            Generate Videos with AI
+                        </h2>
+                        <h3 className="mt-4 text-[16px] font-semibold text-white sm:text-[18px] lg:text-[20px]">
+                            Create Video Ads from Your Visuals using AI
+                        </h3>
+                    </div>
+
+                    <div className="mt-10 overflow-hidden rounded-[18px] border border-white/10 bg-zinc-950 shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
+                        <img
+                            ref={generateImageRef}
+                            src={generateWorkflowImage}
+                            alt="Generate workflow in Vadeo"
+                            className="w-full h-auto transition-all duration-300 ease-out"
+                            style={{
+                                opacity: generateScrollStyles.opacity,
+                                transform: generateScrollStyles.transform,
+                                willChange: 'opacity, transform'
+                            }}
+                        />
+                    </div>
+
+                    <div className="mx-auto mt-8 max-w-5xl space-y-3 text-center text-[16px] leading-relaxed text-white/70">
+                        <p>
+                            Generate in 1080p or 4K depending on your plan, then refine with narrative, sound effects, or ambiance and export polished campaign assets.
                         </p>
                     </div>
 
-                    <div className="mt-16 space-y-12">
-                        <div className="border-b border-black/10 pb-12">
-                            <h3 className="text-[20px] font-bold tracking-[-0.03em] text-black sm:text-[24px]">
-                                Design
-                            </h3>
-                            <div className="mt-5 space-y-4 text-[16px] leading-relaxed text-black/70">
-                                <p>
-                                    Upload product images or video, arrange scenes on the canvas, and build the structure of your ad inside one workspace.
-                                </p>
-                                <p>
-                                    Add headlines, overlays, and visual direction so each scene is ready for generation or export.
-                                </p>
-                            </div>
-                        </div>
+                    <div className="mt-10 overflow-hidden rounded-[18px] border border-white/10 bg-zinc-950 shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
+                        <video
+                            ref={generateVideoRef}
+                            src={generateDemoVideo}
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            className="w-full h-auto transition-all duration-300 ease-out"
+                            style={{
+                                opacity: generateVideoScrollStyles.opacity,
+                                transform: generateVideoScrollStyles.transform,
+                                willChange: 'opacity, transform'
+                            }}
+                        />
+                    </div>
 
-                        <div>
-                            <h3 className="text-[20px] font-bold tracking-[-0.03em] text-black sm:text-[24px]">
-                                Generate
-                            </h3>
-                            <div className="mt-5 space-y-4 text-[16px] leading-relaxed text-black/70">
-                                <p>
-                                    Turn still images into motion, create ad-ready video outputs, and move from concept to finished creative faster.
-                                </p>
-                                <p>
-                                    Generate in 1080p or 4K depending on your plan, then refine and export polished campaign assets.
-                                </p>
-                            </div>
-                        </div>
+                    <div className="mx-auto mt-8 max-w-5xl space-y-3 text-center text-[16px] leading-relaxed text-white/70">
+                        <p>
+                            Overlay uploaded or generated videos with brand assets, shapes, icons, and text to make your videos truly unique.
+                        </p>
                     </div>
                 </div>
             </section>
@@ -454,7 +525,7 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
             {/* Pricing Section */}
             < section id="pricing" className="relative z-10 px-8 py-24 max-w-7xl mx-auto" >
                 <div className="max-w-[800px] mx-auto text-center">
-                    <h2 className={sectionH2ClassName}>Subscription Pricing</h2>
+                    <h2 className={sectionH2ClassName}>Pricing</h2>
                     <p className="text-base text-zinc-300 leading-relaxed">
                         Start with workspace access, then upgrade for 1080p or 4K video generations as your production needs grow.
                     </p>

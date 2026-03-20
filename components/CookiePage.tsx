@@ -48,12 +48,12 @@ const CookiePage: React.FC<CookiePageProps> = ({ onStartEditing }) => {
                             They help websites function properly, remember your preferences, and improve your browsing experience.
                         </p>
                         <p className="mb-12">
-                            Batcho uses cookies and similar technologies to provide, secure, and improve the platform.
+                            Vadeo uses cookies and similar technologies to provide, secure, and improve the platform.
                         </p>
 
                         <h3 className="text-2xl font-bold mb-6 mt-12">2. How We Use Cookies</h3>
                         <p className="mb-6">
-                            Batcho uses cookies for the following purposes:
+                            Vadeo uses cookies for the following purposes:
                         </p>
 
                         <h4 className="text-xl font-semibold mb-4 mt-8">2.1 Essential Cookies</h4>
@@ -71,7 +71,7 @@ const CookiePage: React.FC<CookiePageProps> = ({ onStartEditing }) => {
 
                         <h4 className="text-xl font-semibold mb-4 mt-8">2.2 Performance & Analytics Cookies</h4>
                         <p className="mb-4">
-                            These cookies help us understand how users interact with Batcho, allowing us to improve speed, usability, and reliability.
+                            These cookies help us understand how users interact with Vadeo, allowing us to improve speed, usability, and reliability.
                             Data collected through analytics is non-personal and aggregated.
                         </p>
 
@@ -81,7 +81,7 @@ const CookiePage: React.FC<CookiePageProps> = ({ onStartEditing }) => {
                         </p>
                         <ul className="list-disc pl-5 space-y-2 mb-6">
                             <li>Remembering UI preferences</li>
-                            <li>Keeping your chosen enhancement options</li>
+                            <li>Keeping your chosen editing or generation options</li>
                             <li>Maintaining session consistency</li>
                         </ul>
 
@@ -94,7 +94,7 @@ const CookiePage: React.FC<CookiePageProps> = ({ onStartEditing }) => {
                         <h3 className="text-2xl font-bold mb-6 mt-12">3. Third-Party Cookies</h3>
                         <p className="mb-6">
                             Some cookies may be placed by tools that help operate or analyze the platform (for example, login systems, security tools, or usage analytics).
-                            These cookies are only used to support Batcho's functionality and performance.
+                            These cookies are only used to support Vadeo's functionality and performance.
                         </p>
                         <p className="mb-4">
                             We do not use cookies for:
@@ -109,7 +109,7 @@ const CookiePage: React.FC<CookiePageProps> = ({ onStartEditing }) => {
                         <h3 className="text-2xl font-bold mb-6 mt-12">4. Cookie Control & Your Choices</h3>
                         <p className="mb-6">
                             You can control or disable cookies through your browser settings.
-                            However, if you block essential cookies, Batcho may not function properly—especially login and image processing features.
+                            However, if you block essential cookies, Vadeo may not function properly—especially login, project saving, and generation features.
                         </p>
                         <p className="mb-4">
                             Common browser settings for cookie management include:
@@ -131,7 +131,7 @@ const CookiePage: React.FC<CookiePageProps> = ({ onStartEditing }) => {
                         <p className="mb-6">
                             For any questions about our use of cookies or data practices, contact us at:
                             <br />
-                            <a href="mailto:support@batchocanvas.com" className="text-blue-400 hover:text-blue-300 transition-colors">support@batchocanvas.com</a>
+                            <a href="mailto:hello@vadeo.cloud" className="text-blue-400 hover:text-blue-300 transition-colors">hello@vadeo.cloud</a>
                         </p>
                     </div>
 

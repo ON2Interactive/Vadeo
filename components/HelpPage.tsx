@@ -52,7 +52,7 @@ const HelpPage: React.FC<HelpPageProps> = ({ onStartEditing }) => {
                             <p className="text-zinc-400 leading-relaxed mb-4">
                                 Need help with your account or having trouble generating a video ad? Our team is here to help.
                             </p>
-                            <a href="mailto:support@vadeo.app" className="text-blue-400 font-semibold hover:text-blue-300 transition-colors inline-flex items-center gap-2">
+                            <a href="mailto:hello@vadeo.cloud" className="text-blue-400 font-semibold hover:text-blue-300 transition-colors inline-flex items-center gap-2">
                                 Email Support
                             </a>
                         </div>

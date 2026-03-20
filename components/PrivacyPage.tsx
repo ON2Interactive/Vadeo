@@ -44,19 +44,19 @@ const PrivacyPage: React.FC<PrivacyPageProps> = ({ onStartEditing }) => {
                     <div className="prose prose-invert max-w-none prose-headings:text-zinc-100 prose-p:text-zinc-400 prose-li:text-zinc-400">
                         <h3 className="text-2xl font-bold mb-6 mt-0">1. Introduction</h3>
                         <p className="mb-6">
-                            Batcho ("we," "our," or "us") provides AI-powered image enhancement tools that allow users to upload, improve, and download photos.
-                            This Privacy Policy explains how we collect, use, and protect your information when you use Batcho.
+                            Vadeo ("we," "our," or "us") provides a creative workspace for designing and generating video ads from uploaded images and video.
+                            This Privacy Policy explains how we collect, use, and protect your information when you use Vadeo.
                         </p>
                         <p className="mb-12">
-                            By accessing or using Batcho, you agree to this Privacy Policy.
+                            By accessing or using Vadeo, you agree to this Privacy Policy.
                         </p>
 
                         <h3 className="text-2xl font-bold mb-6 mt-12">2. Information We Collect</h3>
 
-                        <h4 className="text-xl font-semibold mb-4 mt-8">2.1 Images You Upload</h4>
+                        <h4 className="text-xl font-semibold mb-4 mt-8">2.1 Media You Upload</h4>
                         <p className="mb-4">
-                            We collect the images you upload so they can be processed and enhanced.
-                            Images may also be saved to your account if you choose to save them.
+                            We collect the images and video you upload so they can be processed, edited, generated from, and exported.
+                            Media may also be saved to your account if you choose to save your projects.
                         </p>
 
                         <h4 className="text-xl font-semibold mb-4 mt-8">2.2 Account Information</h4>
@@ -67,7 +67,7 @@ const PrivacyPage: React.FC<PrivacyPageProps> = ({ onStartEditing }) => {
                             <li>Your name</li>
                             <li>Email address</li>
                             <li>Password (encrypted)</li>
-                            <li>Saved images associated with your account</li>
+                            <li>Saved projects and outputs associated with your account</li>
                         </ul>
 
                         <h4 className="text-xl font-semibold mb-4 mt-8">2.3 Usage Data</h4>
@@ -76,7 +76,7 @@ const PrivacyPage: React.FC<PrivacyPageProps> = ({ onStartEditing }) => {
                         </p>
                         <ul className="list-disc pl-5 space-y-2 mb-6">
                             <li>Features accessed</li>
-                            <li>Enhancement settings</li>
+                            <li>Editing or generation settings</li>
                             <li>Device type</li>
                             <li>Time spent on the platform</li>
                         </ul>
@@ -89,9 +89,9 @@ const PrivacyPage: React.FC<PrivacyPageProps> = ({ onStartEditing }) => {
                             Your data is used to:
                         </p>
                         <ul className="list-disc pl-5 space-y-2 mb-6">
-                            <li>Process and enhance your images</li>
-                            <li>Provide you with account features and saved images</li>
-                            <li>Improve the functionality and performance of Batcho</li>
+                            <li>Process uploaded media and generate outputs you request</li>
+                            <li>Provide you with account features and saved projects</li>
+                            <li>Improve the functionality and performance of Vadeo</li>
                             <li>Respond to support inquiries</li>
                             <li>Monitor the platform for security and performance</li>
                         </ul>
@@ -100,16 +100,16 @@ const PrivacyPage: React.FC<PrivacyPageProps> = ({ onStartEditing }) => {
                         </p>
                         <ul className="list-disc pl-5 space-y-2 mb-12">
                             <li>Sell your data</li>
-                            <li>Use your images for advertising or marketing</li>
-                            <li>Use your images to train external datasets</li>
-                            <li>Share your images without your permission</li>
+                            <li>Use your media for advertising or marketing</li>
+                            <li>Use your media to train external datasets without your permission</li>
+                            <li>Share your media without your permission</li>
                         </ul>
 
                         <h3 className="text-2xl font-bold mb-6 mt-12">4. Image Storage & Retention</h3>
                         <ul className="list-disc pl-5 space-y-2 mb-12">
-                            <li>Images uploaded for processing are stored temporarily for enhancement.</li>
-                            <li>Images you choose to save will remain accessible in your dashboard until you delete them.</li>
-                            <li>We may introduce features that automatically remove older images to help manage storage. You will be notified if such features become active.</li>
+                            <li>Media uploaded for processing may be stored temporarily for editing and generation.</li>
+                            <li>Projects and outputs you choose to save will remain accessible in your dashboard until you delete them, subject to plan and storage policies.</li>
+                            <li>We may introduce features that automatically remove older files to help manage storage. You will be notified if such features become active.</li>
                         </ul>
 
                         <h3 className="text-2xl font-bold mb-6 mt-12">5. Data Protection & Security</h3>
@@ -127,11 +127,11 @@ const PrivacyPage: React.FC<PrivacyPageProps> = ({ onStartEditing }) => {
 
                         <h3 className="text-2xl font-bold mb-6 mt-12">6. Service Providers</h3>
                         <p className="mb-6">
-                            To operate Batcho, we use infrastructure and processing tools that may handle your images and prompts strictly for operational purposes.
+                            To operate Vadeo, we use infrastructure and processing tools that may handle your media, prompts, and project data strictly for operational purposes.
                             These providers are contractually obligated to maintain confidentiality and adhere to privacy and data protection standards.
                         </p>
                         <p className="mb-12">
-                            No additional personal information is shared beyond what is necessary for image processing and platform function.
+                            No additional personal information is shared beyond what is necessary for platform function, media processing, and generation.
                         </p>
 
                         <h3 className="text-2xl font-bold mb-6 mt-12">7. Your Rights</h3>
@@ -139,19 +139,19 @@ const PrivacyPage: React.FC<PrivacyPageProps> = ({ onStartEditing }) => {
                             You may:
                         </p>
                         <ul className="list-disc pl-5 space-y-2 mb-6">
-                            <li>Access your saved images</li>
-                            <li>Delete individual images</li>
+                            <li>Access your saved projects and outputs</li>
+                            <li>Delete individual files or projects</li>
                             <li>Delete your entire account</li>
                             <li>Request removal of all your data</li>
                             <li>Contact us for privacy-related questions</li>
                         </ul>
                         <p className="mb-12">
-                            To request data deletion or account closure, contact us at <a href="mailto:support@batchocanvas.com" className="text-blue-400 hover:text-blue-300 transition-colors">support@batchocanvas.com</a>.
+                            To request data deletion or account closure, contact us at <a href="mailto:hello@vadeo.cloud" className="text-blue-400 hover:text-blue-300 transition-colors">hello@vadeo.cloud</a>.
                         </p>
 
                         <h3 className="text-2xl font-bold mb-6 mt-12">8. Children's Privacy</h3>
                         <p className="mb-6">
-                            Batcho is not intended for individuals under 13 years old.
+                            Vadeo is not intended for individuals under 13 years old.
                             We do not knowingly collect personal information from children.
                         </p>
 
@@ -161,14 +161,14 @@ const PrivacyPage: React.FC<PrivacyPageProps> = ({ onStartEditing }) => {
                             When changes are made, we will update the "Last updated" date.
                         </p>
                         <p className="mb-12">
-                            Continued use of Batcho after changes indicates acceptance of the revised policy.
+                            Continued use of Vadeo after changes indicates acceptance of the revised policy.
                         </p>
 
                         <h3 className="text-2xl font-bold mb-6 mt-12">10. Contact Us</h3>
                         <p className="mb-6">
                             If you have questions about this Privacy Policy or how we handle data, please contact:
                             <br />
-                            <a href="mailto:support@batchocanvas.com" className="text-blue-400 hover:text-blue-300 transition-colors">support@batchocanvas.com</a>
+                            <a href="mailto:hello@vadeo.cloud" className="text-blue-400 hover:text-blue-300 transition-colors">hello@vadeo.cloud</a>
                         </p>
                     </div>
 

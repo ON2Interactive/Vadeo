@@ -8,7 +8,7 @@ export default async function handler(req, res) {
 
   clearSessionCookie(res);
   if (req.method === 'GET') {
-    res.redirect('/signin');
+    res.redirect('/signup');
     return;
   }
 

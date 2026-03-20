@@ -164,12 +164,13 @@ const AppRouter: React.FC = () => {
         if (session) {
             setIsAuthenticated(true);
             const userPlan = getStoredPlanForUser(session.user.id);
-            const userHasSubscription = hasStoredSubscription(session.user.id);
-            setHasSubscription(userHasSubscription);
-            applyActivePlan(userPlan);
             const adminStatus = await adminHelpers.isUserAdmin(session.user.id);
+            const userHasSubscription = hasStoredSubscription(session.user.id);
+            const canAccessEditor = adminStatus || userHasSubscription;
+            setHasSubscription(canAccessEditor);
             setIsAdmin(adminStatus);
             setIsAdminAuthenticated(adminStatus);
+            applyActivePlan(userPlan);
 
             // Allow public pages even if logged in
             if (path === '/contact') {
@@ -197,7 +198,7 @@ const AppRouter: React.FC = () => {
             } else if (path === '/auth/google/callback') {
                 setView('googleCallback');
             } else if (path.startsWith('/editor')) {
-                if (userHasSubscription) {
+                if (canAccessEditor) {
                     setView('editor');
                 } else {
                     navigate('/pricing', { replace: true });
@@ -210,7 +211,7 @@ const AppRouter: React.FC = () => {
                 // Default for unknown authenticated routes? 
                 // Maybe check if it matches other public routes
                 if (path === '/signin' || path === '/signup') {
-                    navigate(userHasSubscription ? '/editor' : '/pricing', { replace: true });
+                    navigate(canAccessEditor ? '/editor' : '/pricing', { replace: true });
                 } else {
                     setView('landing'); // Default to landing for unknown
                 }
@@ -270,7 +271,7 @@ const AppRouter: React.FC = () => {
     };
 
     const handleLoginSuccess = () => {
-        navigate(hasSubscription ? '/editor' : '/pricing');
+        navigate(isAdmin || hasSubscription ? '/editor' : '/pricing');
     };
 
     const handleSignupSuccess = () => {

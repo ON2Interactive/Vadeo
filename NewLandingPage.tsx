@@ -92,7 +92,7 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
                                 className="w-full max-w-[240px] rounded-[6px] border border-white bg-transparent px-6 py-3 text-[18px] font-medium text-white transition-colors hover:bg-white hover:text-black"
                                 style={{ fontFamily: 'Helvetica, Arial, sans-serif', borderWidth: '1px' }}
                             >
-                                Get Started
+                                Start Free Trial
                             </button>
                         </div>
                     </div>

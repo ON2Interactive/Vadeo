@@ -185,7 +185,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
 
   useEffect(() => {
     if (!isAdminUser && currentPlan === 'none' && isTrialExpired && !showSettingsModal) {
-      setSettingsError('Your 24-hour free trial has ended. Choose a plan to continue.');
+      setSettingsError(null);
       setShowSettingsModal(true);
     }
   }, [currentPlan, isAdminUser, isTrialExpired, showSettingsModal]);
@@ -1730,9 +1730,9 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
             : isTrialActive
               ? 'Your 24-hour free trial is active. Workspace access is enabled, but video generations are not included during trial.'
               : isTrialExpired
-                ? 'Your free trial has ended. Choose a paid plan to continue inside Vadeo.'
-            : currentPlan === 'premium' || currentPlan === 'standard'
-              ? `${getGenerationCountForUser(userId)} of ${PLAN_GENERATION_LIMIT} generations used. ${remainingGenerations} remaining.`
+                ? 'Choose a paid plan to continue inside Vadeo.'
+              : currentPlan === 'premium' || currentPlan === 'standard'
+                ? `${getGenerationCountForUser(userId)} of ${PLAN_GENERATION_LIMIT} generations used. ${remainingGenerations} remaining.`
               : currentPlan === 'starter'
                 ? 'Starter is active. Generation tools are disabled on this plan.'
                 : 'Choose a plan to unlock editor access and generation.'

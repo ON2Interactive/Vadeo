@@ -36,7 +36,7 @@ import GridOverlay, { GridType } from './components/Editor/GridOverlay';
 
 import { useExport } from './hooks/useExport';
 import { aiService, type VeoResolution } from './aiService';
-import { dbHelpers, authHelpers, storageHelpers } from './lib/supabase';
+import { dbHelpers, authHelpers, storageHelpers, type TrialState } from './lib/supabase';
 import { localProjectStore } from './lib/localProjects';
 import { canUseGeneration, getGenerationCountForUser, getRemainingGenerations, recordGenerationSuccess, PLAN_GENERATION_LIMIT } from './lib/generationUsage';
 // import { db } from './db'; // Removing IDB dependency for Project saving
@@ -67,6 +67,7 @@ import {
 interface AppProps {
   initialProject?: any;
   onBackToDashboard?: () => void;
+  trialState?: TrialState;
 }
 
 type PlanTier = 'none' | 'starter' | 'standard' | 'premium';
@@ -85,7 +86,7 @@ type PickerCapableInput = HTMLInputElement & {
   showPicker?: () => void;
 };
 
-const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
+const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState }) => {
   // --- Manage Body Scroll ---
   useEffect(() => {
     document.title = 'Vadeo | Editor';
@@ -124,6 +125,8 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
   const [isNewProject, setIsNewProject] = useState(true);
   const [remainingGenerations, setRemainingGenerations] = useState<number>(0);
   const [accountName, setAccountName] = useState<string>('Vadeo User');
+  const isTrialActive = trialState?.status === 'active';
+  const isTrialExpired = trialState?.status === 'expired';
 
   const handleBackClick = () => {
     if (onBackToDashboard) onBackToDashboard();
@@ -135,6 +138,10 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
     ? 'Premium'
     : isAdminUser
       ? 'Admin'
+      : isTrialActive
+        ? 'Free Trial'
+        : isTrialExpired
+          ? 'Trial Expired'
       : currentPlan === 'premium'
         ? `Premium${Number.isFinite(remainingGenerations) ? ` (${remainingGenerations}/${PLAN_GENERATION_LIMIT} left)` : ''}`
         : currentPlan === 'standard'
@@ -175,6 +182,13 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
 
     setRemainingGenerations(getRemainingGenerations(userId, currentPlan === 'none' ? null : currentPlan));
   }, [userId, currentPlan]);
+
+  useEffect(() => {
+    if (!isAdminUser && currentPlan === 'none' && isTrialExpired && !showSettingsModal) {
+      setSettingsError('Your 24-hour free trial has ended. Choose a plan to continue.');
+      setShowSettingsModal(true);
+    }
+  }, [currentPlan, isAdminUser, isTrialExpired, showSettingsModal]);
 
   // Initialize from Prop (Supabase Data)
   useEffect(() => {
@@ -1699,10 +1713,24 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
         onClose={() => setShowSettingsModal(false)}
         accountName={accountName}
         currentPlanLabel={planLabel}
-        currentPlanStatus={isAdminUser ? 'admin access' : currentPlan === 'none' ? 'inactive' : 'active'}
+        currentPlanStatus={
+          isAdminUser
+            ? 'admin access'
+            : isTrialActive
+              ? '24-hour access'
+              : isTrialExpired
+                ? 'expired'
+                : currentPlan === 'none'
+                  ? 'inactive'
+                  : 'active'
+        }
         usageCopy={
           isAdminUser
             ? 'Admin access is active. You can enter the editor without a paid plan.'
+            : isTrialActive
+              ? 'Your 24-hour free trial is active. Workspace access is enabled, but video generations are not included during trial.'
+              : isTrialExpired
+                ? 'Your free trial has ended. Choose a paid plan to continue inside Vadeo.'
             : currentPlan === 'premium' || currentPlan === 'standard'
               ? `${getGenerationCountForUser(userId)} of ${PLAN_GENERATION_LIMIT} generations used. ${remainingGenerations} remaining.`
               : currentPlan === 'starter'

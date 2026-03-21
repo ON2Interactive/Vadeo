@@ -51,7 +51,7 @@ const PricingPage: React.FC<PricingPageProps> = ({ onBuyCredits }) => {
                 <button
                     type="button"
                     onClick={() => {
-                        window.location.href = '/signup';
+                        window.location.href = '/signup?trial=1';
                     }}
                     className="text-[18px] font-bold text-blue-400 hover:text-blue-300 transition-colors"
                 >

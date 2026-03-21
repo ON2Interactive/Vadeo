@@ -14,7 +14,16 @@ type SessionResponse = {
   user: AuthUser | null;
 };
 
+export type TrialStatus = 'none' | 'active' | 'expired';
+
+export type TrialState = {
+  status: TrialStatus;
+  startedAt: string | null;
+  expiresAt: string | null;
+};
+
 const PROFILE_STORAGE_KEY = 'vadeo_user_profiles';
+const TRIAL_DURATION_MS = 24 * 60 * 60 * 1000;
 
 const canUseStorage = () => typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
 
@@ -75,6 +84,8 @@ const ensureStoredProfile = (user: AuthUser) => {
       full_name: user.full_name || user.email.split('@')[0],
       credits: 50,
       is_admin: Boolean(user.is_admin),
+      trial_started_at: null,
+      trial_expires_at: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -90,6 +101,26 @@ const ensureStoredProfile = (user: AuthUser) => {
     writeProfiles(profiles);
   }
   return profiles[user.id];
+};
+
+const computeTrialState = (profile: any): TrialState => {
+  const startedAt = profile?.trial_started_at || null;
+  const expiresAt = profile?.trial_expires_at || null;
+
+  if (!startedAt || !expiresAt) {
+    return { status: 'none', startedAt: null, expiresAt: null };
+  }
+
+  const expiresAtMs = new Date(expiresAt).getTime();
+  if (Number.isNaN(expiresAtMs)) {
+    return { status: 'none', startedAt: null, expiresAt: null };
+  }
+
+  return {
+    status: expiresAtMs > Date.now() ? 'active' : 'expired',
+    startedAt,
+    expiresAt,
+  };
 };
 
 const buildSession = async () => {
@@ -187,6 +218,53 @@ export const dbHelpers = {
 
     const profile = ensureStoredProfile(user);
     return { data: profile, error: null };
+  },
+
+  async startFreeTrial(userId: string) {
+    const session = await buildSession();
+    const user = session.user;
+    if (!user || user.id !== userId) {
+      return { data: null, error: new Error('User is not authenticated') };
+    }
+
+    const profiles = readProfiles();
+    const existing = ensureStoredProfile(user);
+    const currentTrial = computeTrialState(existing);
+
+    if (currentTrial.status !== 'none') {
+      return { data: currentTrial, error: null };
+    }
+
+    const startedAt = new Date().toISOString();
+    const expiresAt = new Date(Date.now() + TRIAL_DURATION_MS).toISOString();
+
+    profiles[userId] = {
+      ...existing,
+      trial_started_at: startedAt,
+      trial_expires_at: expiresAt,
+      updated_at: new Date().toISOString(),
+    };
+    writeProfiles(profiles);
+
+    return {
+      data: {
+        status: 'active' as TrialStatus,
+        startedAt,
+        expiresAt,
+      },
+      error: null,
+    };
+  },
+
+  async getTrialState(userId: string) {
+    const session = await buildSession();
+    const user = session.user;
+    if (!user || user.id !== userId) {
+      return { data: { status: 'none', startedAt: null, expiresAt: null }, error: new Error('User is not authenticated') };
+    }
+
+    const profile = ensureStoredProfile(user);
+    return { data: computeTrialState(profile), error: null };
   },
 
   async getUserProjects(userId: string) {

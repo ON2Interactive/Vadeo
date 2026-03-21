@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { authHelpers, dbHelpers } from './lib/supabase';
+import { authHelpers, dbHelpers, type TrialState } from './lib/supabase';
 import { LoginPage } from './components/Auth/LoginPage';
 import { SignupPage } from './components/Auth/SignupPage';
 import { Dashboard } from './components/Dashboard/Dashboard';
@@ -37,6 +37,7 @@ const AppRouter: React.FC = () => {
     const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [hasSubscription, setHasSubscription] = useState(false);
+    const [trialState, setTrialState] = useState<TrialState>({ status: 'none', startedAt: null, expiresAt: null });
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -47,8 +48,10 @@ const AppRouter: React.FC = () => {
                 if (!user) return false;
 
                 const storedPlan = getStoredPlanForUser(user.id);
+                const trial = await dbHelpers.getTrialState(user.id);
                 applyActivePlan(storedPlan);
                 setHasSubscription(Boolean(storedPlan));
+                setTrialState(trial.data);
                 return Boolean(storedPlan);
             };
 
@@ -154,6 +157,8 @@ const AppRouter: React.FC = () => {
     const checkAuth = async () => {
         const session = await authHelpers.getSession();
         const path = window.location.pathname;
+        const params = new URLSearchParams(window.location.search);
+        const wantsTrial = params.get('trial') === '1';
 
         if (path === '/dashboard') {
             navigate('/editor', { replace: true });
@@ -166,8 +171,18 @@ const AppRouter: React.FC = () => {
             const userPlan = getStoredPlanForUser(session.user.id);
             const adminStatus = await adminHelpers.isUserAdmin(session.user.id);
             const userHasSubscription = hasStoredSubscription(session.user.id);
-            const canAccessEditor = adminStatus || userHasSubscription;
-            setHasSubscription(canAccessEditor);
+            let nextTrialState = (await dbHelpers.getTrialState(session.user.id)).data;
+
+            if (wantsTrial && !adminStatus && !userHasSubscription && nextTrialState.status === 'none') {
+                const startedTrial = await dbHelpers.startFreeTrial(session.user.id);
+                if (startedTrial.data) {
+                    nextTrialState = startedTrial.data;
+                }
+            }
+
+            const canAccessEditor = adminStatus || userHasSubscription || nextTrialState.status === 'active' || nextTrialState.status === 'expired';
+            setHasSubscription(userHasSubscription);
+            setTrialState(nextTrialState);
             setIsAdmin(adminStatus);
             setIsAdminAuthenticated(adminStatus);
             applyActivePlan(userPlan);
@@ -211,7 +226,7 @@ const AppRouter: React.FC = () => {
                 // Default for unknown authenticated routes? 
                 // Maybe check if it matches other public routes
                 if (path === '/signin' || path === '/signup') {
-                    navigate(canAccessEditor ? '/editor' : '/pricing', { replace: true });
+                    navigate(canAccessEditor ? '/editor' : wantsTrial ? '/signup?trial=1' : '/pricing', { replace: true });
                 } else {
                     setView('landing'); // Default to landing for unknown
                 }
@@ -219,6 +234,7 @@ const AppRouter: React.FC = () => {
         } else {
             setIsAuthenticated(false);
             setHasSubscription(false);
+            setTrialState({ status: 'none', startedAt: null, expiresAt: null });
             clearActivePlan();
             if (path === '/admin') {
                 setView('admin');
@@ -253,7 +269,7 @@ const AppRouter: React.FC = () => {
             } else if (path === '/auth/google/callback') {
                 setView('googleCallback');
             } else if (path.startsWith('/editor')) {
-                navigate('/signup', { replace: true });
+                navigate(wantsTrial ? '/signup?trial=1' : '/signup', { replace: true });
             } else {
                 setView('landing');
             }
@@ -271,7 +287,7 @@ const AppRouter: React.FC = () => {
     };
 
     const handleLoginSuccess = () => {
-        navigate(isAdmin || hasSubscription ? '/editor' : '/pricing');
+        navigate(isAdmin || hasSubscription || trialState.status !== 'none' ? '/editor' : '/pricing');
     };
 
     const handleSignupSuccess = () => {
@@ -401,7 +417,7 @@ const AppRouter: React.FC = () => {
     if (view === 'landing') {
         return (
             <NewLandingPage
-                onStartEditing={() => navigate('/signup')}
+                onStartEditing={() => navigate('/signup?trial=1')}
                 onBuyCredits={handleBuyCredits}
             />
         );
@@ -411,8 +427,8 @@ const AppRouter: React.FC = () => {
         return (
             <LoginPage
                 onSuccess={handleLoginSuccess}
-                onSwitchToSignup={() => setView('signup')}
-                redirectPath="/editor"
+                onSwitchToSignup={() => navigate(location.search ? `/signup${location.search}` : '/signup')}
+                redirectPath={location.search.includes('trial=1') ? '/editor?trial=1' : '/editor'}
             />
         );
     }
@@ -421,8 +437,8 @@ const AppRouter: React.FC = () => {
         return (
             <SignupPage
                 onSuccess={handleSignupSuccess}
-                onSwitchToLogin={() => setView('login')}
-                redirectPath="/pricing"
+                onSwitchToLogin={() => navigate(location.search ? `/signin${location.search}` : '/signin')}
+                redirectPath={location.search.includes('trial=1') ? '/editor?trial=1' : '/pricing'}
             />
         );
     }
@@ -456,6 +472,7 @@ const AppRouter: React.FC = () => {
             <App
                 initialProject={currentProject}
                 onBackToDashboard={handleBackToDashboard}
+                trialState={trialState}
             />
         );
     }

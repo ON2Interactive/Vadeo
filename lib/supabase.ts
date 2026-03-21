@@ -1,5 +1,4 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { localProjectStore } from './localProjects';
 import { localMediaStore } from './localMedia';
 
 type AuthUser = {
@@ -23,38 +22,10 @@ export type TrialState = {
   expiresAt: string | null;
 };
 
-const PROFILE_STORAGE_KEY = 'vadeo_user_profiles';
-const TRIAL_DURATION_MS = 24 * 60 * 60 * 1000;
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
-
-const canUseStorage = () => typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
-
-const readProfiles = (): Record<string, any> => {
-  if (!canUseStorage()) return {};
-
-  try {
-    const raw = window.localStorage.getItem(PROFILE_STORAGE_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch (error) {
-    console.error('Failed to read local profiles:', error);
-    return {};
-  }
-};
-
-const writeProfiles = (profiles: Record<string, any>) => {
-  if (!canUseStorage()) return;
-
-  try {
-    window.localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profiles));
-  } catch (error) {
-    console.error('Failed to write local profiles:', error);
-  }
-};
 
 const fetchJson = async <T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> => {
   const response = await fetch(input, {
@@ -72,60 +43,6 @@ const fetchJson = async <T>(input: RequestInfo | URL, init?: RequestInit): Promi
   }
 
   return payload as T;
-};
-
-const getStoredProfile = (user: AuthUser | null) => {
-  if (!user) return null;
-  const profiles = readProfiles();
-  return profiles[user.id] || null;
-};
-
-const ensureStoredProfile = (user: AuthUser) => {
-  const profiles = readProfiles();
-  if (!profiles[user.id]) {
-    profiles[user.id] = {
-      id: user.id,
-      email: user.email,
-      full_name: user.full_name || user.email.split('@')[0],
-      credits: 50,
-      is_admin: Boolean(user.is_admin),
-      trial_started_at: null,
-      trial_expires_at: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    writeProfiles(profiles);
-  } else {
-    profiles[user.id] = {
-      ...profiles[user.id],
-      email: user.email,
-      full_name: user.full_name || profiles[user.id].full_name,
-      is_admin: Boolean(user.is_admin),
-      updated_at: new Date().toISOString(),
-    };
-    writeProfiles(profiles);
-  }
-  return profiles[user.id];
-};
-
-const computeTrialState = (profile: any): TrialState => {
-  const startedAt = profile?.trial_started_at || null;
-  const expiresAt = profile?.trial_expires_at || null;
-
-  if (!startedAt || !expiresAt) {
-    return { status: 'none', startedAt: null, expiresAt: null };
-  }
-
-  const expiresAtMs = new Date(expiresAt).getTime();
-  if (Number.isNaN(expiresAtMs)) {
-    return { status: 'none', startedAt: null, expiresAt: null };
-  }
-
-  return {
-    status: expiresAtMs > Date.now() ? 'active' : 'expired',
-    startedAt,
-    expiresAt,
-  };
 };
 
 const buildSession = async () => {
@@ -194,6 +111,15 @@ export const authHelpers = {
 };
 
 export const dbHelpers = {
+  async getAccessState() {
+    return fetchJson<{
+      profile: any;
+      trial: TrialState;
+      subscription: any;
+      generationUsage: { used: number; remaining: number; limit: number };
+    }>('/api/data/access');
+  },
+
   async getUserProfile(userId: string) {
     const session = await buildSession();
     const user = session.user;
@@ -201,24 +127,24 @@ export const dbHelpers = {
       return { data: null, error: new Error('User is not authenticated') };
     }
 
-    const profile = ensureStoredProfile(user);
-    return { data: profile, error: null };
+    try {
+      const data = await fetchJson<any>('/api/data/profile');
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error };
+    }
   },
 
   async updateUserCredits(userId: string, credits: number) {
-    const profiles = readProfiles();
-    const existing = profiles[userId];
-    if (!existing) {
-      return { data: null, error: new Error('Profile not found') };
+    try {
+      const data = await fetchJson<any>('/api/data/profile', {
+        method: 'PATCH',
+        body: JSON.stringify({ credits }),
+      });
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error };
     }
-
-    profiles[userId] = {
-      ...existing,
-      credits,
-      updated_at: new Date().toISOString(),
-    };
-    writeProfiles(profiles);
-    return { data: profiles[userId], error: null };
   },
 
   async initUserProfile(userId: string) {
@@ -228,8 +154,12 @@ export const dbHelpers = {
       return { data: null, error: new Error('User is not authenticated') };
     }
 
-    const profile = ensureStoredProfile(user);
-    return { data: profile, error: null };
+    try {
+      const data = await fetchJson<any>('/api/data/profile', { method: 'POST' });
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error };
+    }
   },
 
   async startFreeTrial(userId: string) {
@@ -239,33 +169,12 @@ export const dbHelpers = {
       return { data: null, error: new Error('User is not authenticated') };
     }
 
-    const profiles = readProfiles();
-    const existing = ensureStoredProfile(user);
-    const currentTrial = computeTrialState(existing);
-
-    if (currentTrial.status !== 'none') {
-      return { data: currentTrial, error: null };
+    try {
+      const data = await fetchJson<TrialState>('/api/data/trial', { method: 'POST' });
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error };
     }
-
-    const startedAt = new Date().toISOString();
-    const expiresAt = new Date(Date.now() + TRIAL_DURATION_MS).toISOString();
-
-    profiles[userId] = {
-      ...existing,
-      trial_started_at: startedAt,
-      trial_expires_at: expiresAt,
-      updated_at: new Date().toISOString(),
-    };
-    writeProfiles(profiles);
-
-    return {
-      data: {
-        status: 'active' as TrialStatus,
-        startedAt,
-        expiresAt,
-      },
-      error: null,
-    };
   },
 
   async getTrialState(userId: string) {
@@ -275,8 +184,71 @@ export const dbHelpers = {
       return { data: { status: 'none', startedAt: null, expiresAt: null }, error: new Error('User is not authenticated') };
     }
 
-    const profile = ensureStoredProfile(user);
-    return { data: computeTrialState(profile), error: null };
+    try {
+      const data = await fetchJson<TrialState>('/api/data/trial');
+      return { data, error: null };
+    } catch (error) {
+      return { data: { status: 'none', startedAt: null, expiresAt: null }, error };
+    }
+  },
+
+  async getSubscription(userId: string) {
+    const session = await buildSession();
+    const user = session.user;
+    if (!user || user.id !== userId) {
+      return { data: null, error: new Error('User is not authenticated') };
+    }
+
+    try {
+      const data = await fetchJson<any>('/api/data/subscription');
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error };
+    }
+  },
+
+  async updateSubscription(updates: Record<string, unknown>) {
+    try {
+      const data = await fetchJson<any>('/api/data/subscription', {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      });
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error };
+    }
+  },
+
+  async getGenerationUsage(userId: string) {
+    const session = await buildSession();
+    const user = session.user;
+    if (!user || user.id !== userId) {
+      return { data: { used: 0, remaining: 0, limit: 20 }, error: new Error('User is not authenticated') };
+    }
+
+    try {
+      const data = await fetchJson<{ used: number; remaining: number; limit: number }>('/api/data/generation');
+      return { data, error: null };
+    } catch (error) {
+      return { data: { used: 0, remaining: 0, limit: 20 }, error };
+    }
+  },
+
+  async recordGenerationSuccess(userId: string) {
+    const session = await buildSession();
+    const user = session.user;
+    if (!user || user.id !== userId) {
+      return { data: { used: 0, remaining: 0, limit: 20 }, error: new Error('User is not authenticated') };
+    }
+
+    try {
+      const data = await fetchJson<{ used: number; remaining: number; limit: number }>('/api/data/generation', {
+        method: 'POST',
+      });
+      return { data, error: null };
+    } catch (error) {
+      return { data: { used: 0, remaining: 0, limit: 20 }, error };
+    }
   },
 
   async getUserProjects(userId: string) {
@@ -285,8 +257,12 @@ export const dbHelpers = {
       return { data: [], error: null };
     }
 
-    const data = localProjectStore.list();
-    return { data, error: null };
+    try {
+      const data = await fetchJson<any[]>('/api/data/projects');
+      return { data, error: null };
+    } catch (error) {
+      return { data: [], error };
+    }
   },
 
   async saveProject(userId: string, projectName: string, editorState: any, thumbnail?: string) {
@@ -295,34 +271,58 @@ export const dbHelpers = {
       return { data: null, error: new Error('User is not authenticated') };
     }
 
-    const id = crypto.randomUUID();
-    const data = await localProjectStore.save({
-      id,
-      name: projectName,
-      editorState,
-      thumbnail,
-    });
-    return { data, error: null };
+    try {
+      const data = await fetchJson<any>('/api/data/projects', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: projectName,
+          editor_state: editorState,
+          thumbnail,
+        }),
+      });
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error };
+    }
   },
 
   async updateProject(projectId: string, projectName: string, editorState: any, thumbnail?: string) {
-    const data = await localProjectStore.save({
-      id: projectId,
-      name: projectName,
-      editorState,
-      thumbnail,
-    });
-    return { data, error: null };
+    try {
+      const data = await fetchJson<any>('/api/data/project', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          id: projectId,
+          name: projectName,
+          editor_state: editorState,
+          thumbnail,
+        }),
+      });
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error };
+    }
   },
 
   async deleteProject(projectId: string) {
-    localProjectStore.delete(projectId);
-    return { error: null };
+    try {
+      await fetchJson('/api/data/project', {
+        method: 'DELETE',
+        body: JSON.stringify({ id: projectId }),
+      });
+      return { error: null };
+    } catch (error) {
+      return { error };
+    }
   },
 
   async getProject(projectId: string) {
-    const data = await localProjectStore.get(projectId);
-    return { data, error: null };
+    try {
+      const query = new URLSearchParams({ id: projectId }).toString();
+      const data = await fetchJson<any>(`/api/data/project?${query}`);
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error };
+    }
   },
 
   async sendEmail(payload: { to: string, subject: string, message: string, type: 'contact' | 'signup' | 'purchase' }) {
@@ -364,23 +364,21 @@ export const storageHelpers = {
 
 export const adminHelpers = {
   async getAllUsers() {
-    const profiles = Object.values(readProfiles());
-    return { data: profiles, error: null };
+    try {
+      const data = await fetchJson<any[]>('/api/data/admin?view=users');
+      return { data, error: null };
+    } catch (error) {
+      return { data: [], error };
+    }
   },
 
   async getUserStats() {
-    const users: any[] = Object.values(readProfiles());
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    return {
-      data: {
-        totalUsers: users.length,
-        totalCredits: users.reduce((sum, user) => sum + (user.credits || 0), 0),
-        joinsToday: users.filter((user) => new Date(user.created_at) >= today).length,
-      },
-      error: null,
-    };
+    try {
+      const data = await fetchJson<any>('/api/data/admin?view=stats');
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error };
+    }
   },
 
   async updateUserCredits(userId: string, credits: number) {
@@ -388,33 +386,33 @@ export const adminHelpers = {
   },
 
   async deleteUser(userId: string) {
-    const profiles = readProfiles();
-    delete profiles[userId];
-    writeProfiles(profiles);
-    return { error: null };
+    try {
+      await fetchJson('/api/data/admin', {
+        method: 'DELETE',
+        body: JSON.stringify({ userId }),
+      });
+      return { error: null };
+    } catch (error) {
+      return { error };
+    }
   },
 
   async toggleAdminStatus(userId: string, isAdmin: boolean) {
-    const profiles = readProfiles();
-    const existing = profiles[userId];
-    if (!existing) {
-      return { data: null, error: new Error('Profile not found') };
+    try {
+      const data = await fetchJson<any>('/api/data/admin', {
+        method: 'PATCH',
+        body: JSON.stringify({ userId, is_admin: isAdmin }),
+      });
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error };
     }
-
-    profiles[userId] = {
-      ...existing,
-      is_admin: isAdmin,
-      updated_at: new Date().toISOString(),
-    };
-    writeProfiles(profiles);
-    return { data: profiles[userId], error: null };
   },
 
   async isUserAdmin(userId: string) {
     const session = await buildSession();
     if (!session.user || session.user.id !== userId) return false;
 
-    const profile = getStoredProfile(session.user);
-    return Boolean(session.user.is_admin || profile?.is_admin);
+    return Boolean(session.user.is_admin);
   },
 };

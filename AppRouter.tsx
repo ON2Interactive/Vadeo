@@ -12,7 +12,7 @@ import { adminHelpers } from './lib/supabase';
 import { type StripePlanId } from './stripeConfig';
 import { beginStripeCheckout } from './lib/stripeCheckout';
 import GoogleOAuthCallbackPage from './components/Auth/GoogleOAuthCallbackPage';
-import { applyActivePlan, clearActivePlan, getStoredPlanForUser, hasStoredSubscription, setStoredPlanForUser, type ActivePlan } from './lib/subscriptionStorage';
+import { getStoredPlanForUser, hasStoredSubscription, setStoredPlanForUser } from './lib/subscriptionStorage';
 
 import { useLocation, useNavigate } from 'react-router-dom';
 import ContactPage from './components/ContactPage';
@@ -43,18 +43,6 @@ const AppRouter: React.FC = () => {
 
     useEffect(() => {
         const initializeRouter = async () => {
-            const syncSubscription = async () => {
-                const user = await authHelpers.getCurrentUser();
-                if (!user) return false;
-
-                const storedPlan = getStoredPlanForUser(user.id);
-                const trial = await dbHelpers.getTrialState(user.id);
-                applyActivePlan(storedPlan);
-                setHasSubscription(Boolean(storedPlan));
-                setTrialState(trial.data);
-                return Boolean(storedPlan);
-            };
-
             const params = new URLSearchParams(window.location.search);
             if (params.get('payment') === 'success') {
                 const pendingPurchase = localStorage.getItem('pending_purchase');
@@ -62,7 +50,7 @@ const AppRouter: React.FC = () => {
                     try {
                         const purchaseData = JSON.parse(pendingPurchase);
                         const purchasedPlanId = purchaseData.planId;
-                        let resolvedPlan: ActivePlan | null = null;
+                        let resolvedPlan: 'starter' | 'standard' | 'premium' | null = null;
                         if (purchasedPlanId === 'STARTER') {
                             resolvedPlan = 'starter';
                         } else if (purchasedPlanId === 'PRO') {
@@ -75,7 +63,10 @@ const AppRouter: React.FC = () => {
                         if (user) {
                             if (resolvedPlan) {
                                 setStoredPlanForUser(user.id, resolvedPlan);
-                                applyActivePlan(resolvedPlan);
+                                await dbHelpers.updateSubscription({
+                                    plan: resolvedPlan,
+                                    status: 'active',
+                                });
                                 setHasSubscription(true);
                             }
 
@@ -98,7 +89,6 @@ const AppRouter: React.FC = () => {
             }
 
             checkAuth();
-            syncSubscription();
         };
 
         initializeRouter();
@@ -168,10 +158,12 @@ const AppRouter: React.FC = () => {
 
         if (session) {
             setIsAuthenticated(true);
-            const userPlan = getStoredPlanForUser(session.user.id);
             const adminStatus = await adminHelpers.isUserAdmin(session.user.id);
-            const userHasSubscription = hasStoredSubscription(session.user.id);
-            let nextTrialState = (await dbHelpers.getTrialState(session.user.id)).data;
+            const accessState = await dbHelpers.getAccessState().catch(() => null);
+            const fallbackPlan = getStoredPlanForUser(session.user.id);
+            const userPlan = accessState?.subscription?.plan || fallbackPlan || null;
+            const userHasSubscription = accessState ? Boolean(userPlan) : hasStoredSubscription(session.user.id);
+            let nextTrialState = accessState?.trial || (await dbHelpers.getTrialState(session.user.id)).data;
 
             if (wantsTrial && !adminStatus && !userHasSubscription && nextTrialState.status === 'none') {
                 const startedTrial = await dbHelpers.startFreeTrial(session.user.id);
@@ -185,7 +177,6 @@ const AppRouter: React.FC = () => {
             setTrialState(nextTrialState);
             setIsAdmin(adminStatus);
             setIsAdminAuthenticated(adminStatus);
-            applyActivePlan(userPlan);
 
             // Allow public pages even if logged in
             if (path === '/contact') {
@@ -235,7 +226,6 @@ const AppRouter: React.FC = () => {
             setIsAuthenticated(false);
             setHasSubscription(false);
             setTrialState({ status: 'none', startedAt: null, expiresAt: null });
-            clearActivePlan();
             if (path === '/admin') {
                 setView('admin');
             } else if (path === '/admin-login') {

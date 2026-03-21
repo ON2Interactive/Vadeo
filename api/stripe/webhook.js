@@ -1,10 +1,5 @@
 import Stripe from 'stripe';
-
-const PRICE_ID_TO_PLAN = {
-  price_1TDA81PS7A6w1qKNbfSiBBDA: 'starter',
-  price_1TDA9gPS7A6w1qKNjZmhivpd: 'standard',
-  price_1TDAAfPS7A6w1qKNJmziQDG6: 'premium',
-};
+import { getSupabaseAdmin, mapPriceIdToPlan } from '../data/_supabase.js';
 
 const readRawBody = async (req) => {
   const chunks = [];
@@ -16,7 +11,7 @@ const readRawBody = async (req) => {
 
 const getSubscriptionPlan = (subscription) => {
   const priceId = subscription?.items?.data?.[0]?.price?.id;
-  return PRICE_ID_TO_PLAN[priceId] || 'unknown';
+  return mapPriceIdToPlan(priceId) || 'unknown';
 };
 
 const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
@@ -196,6 +191,84 @@ const summarizeEvent = (event) => {
   }
 };
 
+const resolveUserIdForEvent = async (supabase, payload) => {
+  const metadataUserId = payload?.metadata?.userId;
+  if (metadataUserId) return metadataUserId;
+
+  const email =
+    payload?.customer_details?.email ||
+    payload?.customer_email ||
+    payload?.metadata?.userEmail ||
+    payload?.customer_email ||
+    null;
+
+  if (!email) return null;
+
+  const { data } = await supabase
+    .from('user_profiles')
+    .select('app_user_id')
+    .eq('email', email)
+    .maybeSingle();
+
+  return data?.app_user_id || null;
+};
+
+const syncCheckoutSessionToSupabase = async (supabase, session) => {
+  const userId = await resolveUserIdForEvent(supabase, session);
+  if (!userId) return;
+
+  const plan = mapPriceIdToPlan(session.metadata?.priceId) || (
+    session.metadata?.planId === 'STARTER' ? 'starter' :
+    session.metadata?.planId === 'PRO' ? 'standard' :
+    session.metadata?.planId === 'BRAND' ? 'premium' :
+    null
+  );
+
+  await supabase.from('user_profiles').upsert({
+    app_user_id: userId,
+    email: session.customer_details?.email || session.customer_email || session.metadata?.userEmail || '',
+    stripe_customer_id: session.customer || null,
+  }, { onConflict: 'app_user_id' });
+
+  if (!plan) return;
+
+  await supabase.from('user_subscriptions').upsert({
+    app_user_id: userId,
+    plan,
+    status: 'active',
+    stripe_customer_id: session.customer || null,
+    stripe_subscription_id: session.subscription || null,
+  }, { onConflict: 'app_user_id' });
+};
+
+const syncSubscriptionToSupabase = async (supabase, subscription) => {
+  const userId = await resolveUserIdForEvent(supabase, subscription);
+  if (!userId) return;
+
+  const priceId = subscription?.items?.data?.[0]?.price?.id || null;
+  const plan = mapPriceIdToPlan(priceId) || 'none';
+  const currentPeriodEndUnix = subscription.items?.data?.[0]?.current_period_end || null;
+  const currentPeriodEnd = currentPeriodEndUnix ? new Date(currentPeriodEndUnix * 1000).toISOString() : null;
+
+  await supabase.from('user_subscriptions').upsert({
+    app_user_id: userId,
+    plan,
+    status: subscription.status || 'inactive',
+    stripe_customer_id: subscription.customer || null,
+    stripe_subscription_id: subscription.id,
+    stripe_price_id: priceId,
+    cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
+    current_period_end: currentPeriodEnd,
+  }, { onConflict: 'app_user_id' });
+
+  if (subscription.customer) {
+    await supabase
+      .from('user_profiles')
+      .update({ stripe_customer_id: subscription.customer })
+      .eq('app_user_id', userId);
+  }
+};
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method Not Allowed' });
@@ -225,16 +298,23 @@ export default async function handler(req, res) {
     const stripe = new Stripe(stripeSecretKey);
     const rawBody = await readRawBody(req);
     const event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+    const supabase = getSupabaseAdmin();
 
     const summary = summarizeEvent(event);
     console.log('Stripe webhook received:', JSON.stringify(summary));
 
     if (event.type === 'checkout.session.completed') {
+      await syncCheckoutSessionToSupabase(supabase, event.data.object);
       await notifyPurchase({ stripeApiKey: process.env.SENDGRID_API_KEY, session: event.data.object });
+    }
+
+    if (event.type === 'customer.subscription.created') {
+      await syncSubscriptionToSupabase(supabase, event.data.object);
     }
 
     if (event.type === 'customer.subscription.updated') {
       const subscription = event.data.object;
+      await syncSubscriptionToSupabase(supabase, subscription);
       const previous = event.data.previous_attributes || {};
       const justScheduledCancellation =
         subscription.cancel_at_period_end === true &&
@@ -249,6 +329,7 @@ export default async function handler(req, res) {
     }
 
     if (event.type === 'customer.subscription.deleted') {
+      await syncSubscriptionToSupabase(supabase, event.data.object);
       await notifyCancellationComplete({
         stripeApiKey: process.env.SENDGRID_API_KEY,
         subscription: event.data.object,

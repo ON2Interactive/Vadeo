@@ -38,7 +38,8 @@ import { useExport } from './hooks/useExport';
 import { aiService, type VeoResolution } from './aiService';
 import { dbHelpers, authHelpers, storageHelpers, type TrialState } from './lib/supabase';
 import { localProjectStore } from './lib/localProjects';
-import { canUseGeneration, getGenerationCountForUser, getRemainingGenerations, recordGenerationSuccess, PLAN_GENERATION_LIMIT } from './lib/generationUsage';
+import { getGenerationCountForUser, getRemainingGenerations, PLAN_GENERATION_LIMIT, recordGenerationSuccess } from './lib/generationUsage';
+import { getStoredPlanForUser } from './lib/subscriptionStorage';
 // import { db } from './db'; // Removing IDB dependency for Project saving
 import { RemixEngine } from './components/Remix/RemixEngine';
 import { useRemix } from './components/Remix/useRemix';
@@ -112,7 +113,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
   const [userId, setUserId] = useState<string | null>(null);
   const [isAdminUser, setIsAdminUser] = useState(false);
   const [currentPlan, setCurrentPlan] = useState<PlanTier>(() => {
-    const storedPlan = localStorage.getItem('vd_plan');
+    const storedPlan = getStoredPlanForUser(typeof window !== 'undefined' ? localStorage.getItem('vadeo_last_user_id') || '' : '');
     if (storedPlan === 'starter' || storedPlan === 'standard' || storedPlan === 'premium') {
       return storedPlan;
     }
@@ -124,6 +125,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const [isNewProject, setIsNewProject] = useState(true);
   const [remainingGenerations, setRemainingGenerations] = useState<number>(0);
+  const [usedGenerations, setUsedGenerations] = useState<number>(0);
   const [accountName, setAccountName] = useState<string>('Vadeo User');
   const isTrialActive = trialState?.status === 'active';
   const isTrialExpired = trialState?.status === 'expired';
@@ -132,7 +134,10 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
     if (onBackToDashboard) onBackToDashboard();
   };
 
-  const hasGenerationAccess = DEV_BYPASS_CREDITS || isAdminUser || canUseGeneration(userId, currentPlan === 'none' ? null : currentPlan);
+  const hasGenerationAccess =
+    DEV_BYPASS_CREDITS ||
+    isAdminUser ||
+    ((currentPlan === 'standard' || currentPlan === 'premium') && remainingGenerations > 0);
   const hasPremiumAccess = DEV_BYPASS_CREDITS || isAdminUser || currentPlan === 'premium';
   const planLabel = DEV_BYPASS_CREDITS
     ? 'Premium'
@@ -152,9 +157,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
 
   const applyPlan = (plan: PlanTier) => {
     setCurrentPlan(plan);
-    localStorage.setItem('vd_plan', plan);
     const isPremium = plan === 'premium';
-    localStorage.setItem('vd_pro_status', isPremium ? 'true' : 'false');
     setEditorState(prev => ({ ...prev, isPro: DEV_BYPASS_CREDITS ? true : isPremium }));
   };
 
@@ -163,25 +166,43 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
     authHelpers.getCurrentUser().then(async (user) => {
       if (user) {
         setUserId(user.id);
+        localStorage.setItem('vadeo_last_user_id', user.id);
         setIsAdminUser(Boolean(user.is_admin));
-        setAccountName(user.name || 'Vadeo User');
+        setAccountName(user.full_name || user.email?.split('@')[0] || 'Vadeo User');
         await dbHelpers.initUserProfile(user.id);
+        const accessState = await dbHelpers.getAccessState().catch(() => null);
+        if (accessState?.profile) {
+          setAccountName(accessState.profile.full_name || user.full_name || user.email?.split('@')[0] || 'Vadeo User');
+        }
+        const nextPlan = accessState?.subscription?.plan;
+        if (nextPlan === 'starter' || nextPlan === 'standard' || nextPlan === 'premium') {
+          applyPlan(nextPlan);
+        } else if (!accessState) {
+          const storedPlan = getStoredPlanForUser(user.id);
+          if (storedPlan) {
+            applyPlan(storedPlan);
+          }
+        } else {
+          applyPlan('none');
+        }
+        if (accessState?.generationUsage) {
+          setUsedGenerations(accessState.generationUsage.used || 0);
+          setRemainingGenerations(accessState.generationUsage.remaining || 0);
+        } else {
+          const fallbackPlan = nextPlan || getStoredPlanForUser(user.id);
+          setUsedGenerations(getGenerationCountForUser(user.id));
+          setRemainingGenerations(getRemainingGenerations(user.id, fallbackPlan));
+        }
       } else {
         setUserId(null);
         setIsAdminUser(false);
         setAccountName('Vadeo User');
+        setCurrentPlan(DEV_BYPASS_CREDITS ? 'premium' : 'none');
+        setUsedGenerations(0);
+        setRemainingGenerations(0);
       }
     });
   }, []);
-
-  useEffect(() => {
-    if (!userId) {
-      setRemainingGenerations(0);
-      return;
-    }
-
-    setRemainingGenerations(getRemainingGenerations(userId, currentPlan === 'none' ? null : currentPlan));
-  }, [userId, currentPlan]);
 
   useEffect(() => {
     if (!isAdminUser && currentPlan === 'none' && isTrialExpired && !showSettingsModal) {
@@ -216,9 +237,6 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
   // --- Editor State ---
   const [editorState, setEditorState] = useState<EditorState>(() => {
     // ... existing init logic ...
-    const storedPlan = localStorage.getItem('vd_plan');
-    const storedPro = storedPlan === 'premium' || localStorage.getItem('vd_pro_status') === 'true';
-
     const initialPage: Page = {
       id: DEFAULT_PAGE_ID,
       name: 'Scene 1',
@@ -237,7 +255,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
       selectedLayerId: null,
       history: [[initialPage]],
       historyIndex: 0,
-      isPro: DEV_BYPASS_CREDITS ? true : storedPro,
+      isPro: DEV_BYPASS_CREDITS ? true : false,
       selectedLayerIds: [],
       playheadTime: 0,
       isPlaying: false,
@@ -1330,7 +1348,14 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
       );
 
       addGeneratedVideoLayer(resultUrl, 'Vadeo ad', VEO_GENERATED_DURATION_SEC);
-      setRemainingGenerations(recordGenerationSuccess(userId, currentPlan === 'none' ? null : currentPlan));
+      const generationResult = await dbHelpers.recordGenerationSuccess(userId);
+      if (!generationResult.error && generationResult.data) {
+        setUsedGenerations(generationResult.data.used);
+        setRemainingGenerations(generationResult.data.remaining);
+      } else {
+        setRemainingGenerations(recordGenerationSuccess(userId, currentPlan === 'none' ? null : currentPlan));
+        setUsedGenerations(getGenerationCountForUser(userId));
+      }
       setShowVadeoAdModal(false);
     } catch (err: any) {
       console.error(err);
@@ -1395,7 +1420,14 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
       }
 
       addGeneratedVideoLayer(resultUrl, 'Generated video', VEO_GENERATED_DURATION_SEC);
-      setRemainingGenerations(recordGenerationSuccess(userId, currentPlan === 'none' ? null : currentPlan));
+      const generationResult = await dbHelpers.recordGenerationSuccess(userId);
+      if (!generationResult.error && generationResult.data) {
+        setUsedGenerations(generationResult.data.used);
+        setRemainingGenerations(generationResult.data.remaining);
+      } else {
+        setRemainingGenerations(recordGenerationSuccess(userId, currentPlan === 'none' ? null : currentPlan));
+        setUsedGenerations(getGenerationCountForUser(userId));
+      }
       setShowVadeoAdModal(false);
     } catch (err: any) {
       console.error(err);
@@ -1458,7 +1490,14 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
         audioType
       );
       addGeneratedVideoLayer(resultUrl, 'Frame video', VEO_GENERATED_DURATION_SEC);
-      setRemainingGenerations(recordGenerationSuccess(userId, currentPlan === 'none' ? null : currentPlan));
+      const generationResult = await dbHelpers.recordGenerationSuccess(userId);
+      if (!generationResult.error && generationResult.data) {
+        setUsedGenerations(generationResult.data.used);
+        setRemainingGenerations(generationResult.data.remaining);
+      } else {
+        setRemainingGenerations(recordGenerationSuccess(userId, currentPlan === 'none' ? null : currentPlan));
+        setUsedGenerations(getGenerationCountForUser(userId));
+      }
       setShowVadeoAdModal(false);
     } catch (err: any) {
       console.error(err);
@@ -1513,7 +1552,14 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
         audioType
       );
       addGeneratedVideoLayer(resultUrl, 'Reference video', VEO_GENERATED_DURATION_SEC);
-      setRemainingGenerations(recordGenerationSuccess(userId, currentPlan === 'none' ? null : currentPlan));
+      const generationResult = await dbHelpers.recordGenerationSuccess(userId);
+      if (!generationResult.error && generationResult.data) {
+        setUsedGenerations(generationResult.data.used);
+        setRemainingGenerations(generationResult.data.remaining);
+      } else {
+        setRemainingGenerations(recordGenerationSuccess(userId, currentPlan === 'none' ? null : currentPlan));
+        setUsedGenerations(getGenerationCountForUser(userId));
+      }
       setShowVadeoAdModal(false);
     } catch (err: any) {
       console.error(err);
@@ -1732,7 +1778,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
               : isTrialExpired
                 ? 'Choose a paid plan to continue inside Vadeo.'
               : currentPlan === 'premium' || currentPlan === 'standard'
-                ? `${getGenerationCountForUser(userId)} of ${PLAN_GENERATION_LIMIT} generations used. ${remainingGenerations} remaining.`
+                ? `${usedGenerations} of ${PLAN_GENERATION_LIMIT} generations used. ${remainingGenerations} remaining.`
               : currentPlan === 'starter'
                 ? 'Starter is active. Generation tools are disabled on this plan.'
                 : 'Choose a plan to unlock editor access and generation.'

@@ -61,12 +61,14 @@ export default async function handler(req, res) {
       customer_email: session?.email || undefined,
       metadata: {
         planId,
+        priceId,
         userId: session?.id || '',
         userEmail: session?.email || '',
       },
       subscription_data: {
         metadata: {
           planId,
+          priceId,
           userId: session?.id || '',
           userEmail: session?.email || '',
         },

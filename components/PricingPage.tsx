@@ -48,6 +48,15 @@ const PricingPage: React.FC<PricingPageProps> = ({ onBuyCredits }) => {
                 <p className="text-base text-zinc-400 max-w-2xl mx-auto leading-relaxed mb-12">
                     Start with workspace access, then upgrade for 1080p or 4K video generations as your production needs grow.
                 </p>
+                <button
+                    type="button"
+                    onClick={() => {
+                        window.location.href = '/signup';
+                    }}
+                    className="text-sm font-semibold text-blue-400 hover:text-blue-300 transition-colors underline underline-offset-4"
+                >
+                    Try It Now / Free Trial
+                </button>
 
                 {/* Pricing Grid - Moved inside Hero strictly or keep separate? 
                     User said "take the pricing section... and put it in the pricing page"

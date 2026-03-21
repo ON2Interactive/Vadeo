@@ -29,6 +29,7 @@ interface Props {
   onToolSelect: (tool: string) => void;
   onRemix: () => void;
   onGenerateAd: () => void;
+  onOpenSettings: () => void;
   canGenerateAds?: boolean;
   activeTool: string;
   imageUploadInputId: string;
@@ -40,6 +41,7 @@ const Toolbar: React.FC<Props> = ({
   onToolSelect,
   onRemix,
   onGenerateAd,
+  onOpenSettings,
   canGenerateAds = true,
   activeTool,
   imageUploadInputId,
@@ -202,6 +204,7 @@ const Toolbar: React.FC<Props> = ({
         <button
           type="button"
           className={baseControlClass}
+          onClick={onOpenSettings}
         >
           <Settings size={18} strokeWidth={1.9} />
           <span className={tooltipClass}>

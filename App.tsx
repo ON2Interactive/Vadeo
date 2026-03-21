@@ -30,6 +30,7 @@ import ProModal from './components/Modals/ProModal';
 import AIModal from './components/Modals/AIModal';
 import VadeoAdModal from './components/Modals/VadeoAdModal';
 import CreditsModal from './components/Modals/CreditsModal';
+import SettingsModal from './components/Modals/SettingsModal';
 import GridOverlay, { GridType } from './components/Editor/GridOverlay';
 
 
@@ -117,8 +118,13 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
     return DEV_BYPASS_CREDITS ? 'premium' : 'none';
   });
   const [showCreditsModal, setShowCreditsModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [settingsBusyAction, setSettingsBusyAction] = useState<string | null>(null);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
   const [isNewProject, setIsNewProject] = useState(true);
   const [remainingGenerations, setRemainingGenerations] = useState<number>(0);
+  const [accountName, setAccountName] = useState<string>('Vadeo User');
+  const [accountEmail, setAccountEmail] = useState<string>('');
 
   const handleBackClick = () => {
     if (onBackToDashboard) onBackToDashboard();
@@ -152,10 +158,14 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
       if (user) {
         setUserId(user.id);
         setIsAdminUser(Boolean(user.is_admin));
+        setAccountName(user.name || 'Vadeo User');
+        setAccountEmail(user.email || '');
         await dbHelpers.initUserProfile(user.id);
       } else {
         setUserId(null);
         setIsAdminUser(false);
+        setAccountName('Vadeo User');
+        setAccountEmail('');
       }
     });
   }, []);
@@ -254,6 +264,30 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
 
   const handleUpgrade = () => {
     applyPlan('premium');
+  };
+
+  const handleOpenSettings = () => {
+    setSettingsError(null);
+    setShowSettingsModal(true);
+  };
+
+  const handlePlanSelectFromSettings = (plan: 'starter' | 'standard' | 'premium') => {
+    setSettingsError(null);
+    setShowSettingsModal(false);
+    window.location.assign(`/pricing?plan=${plan}`);
+  };
+
+  const handleSettingsLogout = async () => {
+    try {
+      setSettingsBusyAction('logout');
+      setSettingsError(null);
+      await authHelpers.signOut();
+      window.location.assign('/signup');
+    } catch (error) {
+      setSettingsError(error instanceof Error ? error.message : 'Unable to log out right now.');
+    } finally {
+      setSettingsBusyAction(null);
+    }
   };
 
   // --- Supabase Save Logic ---
@@ -1637,6 +1671,29 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
       )}
       {showExportDialog && <ExportDialog onClose={() => setShowExportDialog(false)} onConfirm={handleConfirmExport} aspectRatio={activePage.aspectRatio} currentWidth={activePage.width} currentHeight={activePage.height} hasVideo={hasVideo} suggestedDuration={maxVideoDuration} isPro={hasPremiumAccess} onShowPro={() => setShowProModal(true)} />}
       {showProModal && !DEV_BYPASS_CREDITS && <ProModal onClose={() => setShowProModal(false)} onUpgrade={handleUpgrade} />}
+      <SettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        accountName={accountName}
+        accountEmail={accountEmail}
+        currentPlanLabel={planLabel}
+        currentPlanStatus={isAdminUser ? 'admin access' : currentPlan === 'none' ? 'inactive' : 'active'}
+        usageCopy={
+          isAdminUser
+            ? 'Admin access is active. You can enter the editor without a paid plan.'
+            : currentPlan === 'premium' || currentPlan === 'standard'
+              ? `${remainingGenerations} of ${PLAN_GENERATION_LIMIT} generations remaining.`
+              : currentPlan === 'starter'
+                ? 'Starter is active. Generation tools are disabled on this plan.'
+                : 'Choose a plan to unlock editor access and generation.'
+        }
+        onUpgradeStarter={() => handlePlanSelectFromSettings('starter')}
+        onUpgradeStandard={() => handlePlanSelectFromSettings('standard')}
+        onUpgradePremium={() => handlePlanSelectFromSettings('premium')}
+        onLogout={() => void handleSettingsLogout()}
+        busyAction={settingsBusyAction}
+        error={settingsError}
+      />
       {showAIModal && <AIModal onClose={() => setShowAIModal(false)} onGenerate={handleConfirmAI} />}
       {showVadeoAdModal && (
         <VadeoAdModal
@@ -1832,6 +1889,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
           onToolSelect={setActiveTool}
           onRemix={handleRemix}
           onGenerateAd={handleTriggerVadeoAd}
+          onOpenSettings={handleOpenSettings}
           canGenerateAds={hasGenerationAccess}
           activeTool={activeTool}
           imageUploadInputId={IMAGE_UPLOAD_INPUT_ID}

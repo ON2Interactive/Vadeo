@@ -587,10 +587,10 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
                 <div className="relative z-10 text-center max-w-4xl mx-auto">
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
                         <button
-                            onClick={() => window.location.href = '/signup'}
+                            onClick={() => window.location.href = '/signup?trial=1'}
                             className="w-full sm:w-auto px-12 py-5 bg-transparent border border-white text-white rounded-full text-lg font-black hover:bg-white hover:text-black transition-all"
                         >
-                            Start Creating
+                            Start Free Trial
                         </button>
                     </div>
                 </div>

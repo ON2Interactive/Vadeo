@@ -1,3 +1,4 @@
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { localProjectStore } from './localProjects';
 import { localMediaStore } from './localMedia';
 
@@ -24,6 +25,10 @@ export type TrialState = {
 
 const PROFILE_STORAGE_KEY = 'vadeo_user_profiles';
 const TRIAL_DURATION_MS = 24 * 60 * 60 * 1000;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
 const canUseStorage = () => typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
 
@@ -140,7 +145,14 @@ const redirectToGoogle = (redirectPath = '/editor') => {
   window.location.href = target.toString();
 };
 
-export const supabase = null;
+export const supabase: SupabaseClient | null = isSupabaseConfigured
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+      },
+    })
+  : null;
 
 export const authHelpers = {
   async signUp() {

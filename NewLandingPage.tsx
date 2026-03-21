@@ -21,7 +21,7 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
     const { executeRecaptcha } = useRecaptcha();
 
     React.useEffect(() => {
-        document.title = "Vadeo | Turn Images Into Video Ads";
+        document.title = "Create Video Ads with Vadeo";
     }, []);
 
     const handleSoonSubmit = async (e: React.FormEvent) => {

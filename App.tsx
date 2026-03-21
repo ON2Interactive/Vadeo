@@ -424,25 +424,37 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
         return;
       }
 
-      // Silent save logic (duplicated to avoid prop drilling / complex callback deps)
       const performAutosave = async () => {
-        // Prevent auto-saving if the project hasn't been manually saved at least once
-        if (current.isNewProject) {
-          console.log("Autosave skipped: Project is new and unsaved.");
-          return;
-        }
-
         try {
-          // setIsSaving(true); // Optional: skip spinner for autosave
           const thumbnail = current.editorState.pages[0]?.thumbnail;
+          if (current.isNewProject) {
+            const result = await dbHelpers.saveProject(
+              current.userId,
+              current.projectName,
+              current.editorState,
+              thumbnail
+            );
 
-          // Since we return early for new projects, we only need update logic here
-          await dbHelpers.updateProject(current.projectId, current.projectName, current.editorState, thumbnail);
-
+            if (result.error) throw result.error;
+            if (result.data?.id) {
+              setProjectId(result.data.id);
+              setIsNewProject(false);
+              console.log('Autosave created new project:', result.data.id);
+            }
+          } else {
+            const result = await dbHelpers.updateProject(
+              current.projectId,
+              current.projectName,
+              current.editorState,
+              thumbnail
+            );
+            if (result.error) throw result.error;
+          }
           setLastSaved(Date.now());
           console.log("Autosave complete.");
-        } catch (e) { console.error("Autosave error:", e); }
-        // finally {setIsSaving(false); }
+        } catch (e) {
+          console.error("Autosave error:", e);
+        }
       };
 
       console.log("Triggering Autosave Check...");

@@ -1,5 +1,4 @@
 import React from 'react';
-import heroDarkImage from '../../Assets/Hero-Dark.png';
 
 type SettingsModalProps = {
   isOpen: boolean;
@@ -35,7 +34,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   return (
     <div className="workspace-settings-modal" role="dialog" aria-modal="true" aria-label="Settings">
       <div className="workspace-settings-media">
-        <img alt="" className="workspace-settings-image" src={heroDarkImage} />
+        <img alt="" className="workspace-settings-image" src="/Hero-Dark.png" />
         <div className="workspace-settings-image-overlay" />
         <div className="workspace-settings-badge">
           <strong>{accountName || 'Vadeo User'}</strong>

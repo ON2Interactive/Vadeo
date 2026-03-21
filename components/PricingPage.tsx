@@ -53,9 +53,9 @@ const PricingPage: React.FC<PricingPageProps> = ({ onBuyCredits }) => {
                     onClick={() => {
                         window.location.href = '/signup';
                     }}
-                    className="text-sm font-semibold text-blue-400 hover:text-blue-300 transition-colors underline underline-offset-4"
+                    className="text-[18px] font-bold text-blue-400 hover:text-blue-300 transition-colors"
                 >
-                    Try It Now / Free Trial
+                    Start Free Trial
                 </button>
 
                 {/* Pricing Grid - Moved inside Hero strictly or keep separate? 

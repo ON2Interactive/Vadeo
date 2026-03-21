@@ -213,13 +213,21 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
                 <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                     {/* Feature 1 */}
                     <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-8 backdrop-blur transition-all hover:border-zinc-700">
+                        <h3 className="text-xl font-bold">Social Media Sizes</h3>
+                        <p className="mt-4 text-sm leading-relaxed text-zinc-300">
+                            Switch between vertical, square, and widescreen layouts for feeds, reels, stories, and paid placements without rebuilding the ad.
+                        </p>
+                    </div>
+
+                    {/* Feature 2 */}
+                    <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-8 backdrop-blur transition-all hover:border-zinc-700">
                         <h3 className="text-xl font-bold">Image-to-Video Workflow</h3>
                         <p className="mt-4 text-sm leading-relaxed text-zinc-300">
                             Start with still images and turn them into motion-ready ad scenes without rebuilding everything by hand.
                         </p>
                     </div>
 
-                    {/* Feature 2 */}
+                    {/* Feature 3 */}
                     <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-8 backdrop-blur transition-all hover:border-zinc-700">
                         <h3 className="text-xl font-bold">Ad Copy & Overlays</h3>
                         <p className="mt-4 text-sm leading-relaxed text-zinc-300">
@@ -227,7 +235,7 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
                         </p>
                     </div>
 
-                    {/* Feature 3 */}
+                    {/* Feature 4 */}
                     <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-8 backdrop-blur transition-all hover:border-zinc-700">
                         <h3 className="text-xl font-bold">Export Video Ads</h3>
                         <p className="mt-4 text-sm leading-relaxed text-zinc-300">
@@ -235,7 +243,7 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
                         </p>
                     </div>
 
-                    {/* Feature 4 */}
+                    {/* Feature 5 */}
                     <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-8 backdrop-blur transition-all hover:border-zinc-700">
                         <h3 className="text-xl font-bold">Project Saving</h3>
                         <p className="mt-4 text-sm leading-relaxed text-zinc-300">
@@ -243,7 +251,7 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
                         </p>
                     </div>
 
-                    {/* Feature 5 */}
+                    {/* Feature 6 */}
                     <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-8 backdrop-blur transition-all hover:border-zinc-700">
                         <h3 className="text-xl font-bold">Auto-Save</h3>
                         <p className="mt-4 text-sm leading-relaxed text-zinc-300">
@@ -251,7 +259,7 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
                         </p>
                     </div>
 
-                    {/* Feature 6 */}
+                    {/* Feature 7 */}
                     <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-8 backdrop-blur transition-all hover:border-zinc-700">
                         <h3 className="text-xl font-bold">AI Motion Generation</h3>
                         <p className="mt-4 text-sm leading-relaxed text-zinc-300">
@@ -259,7 +267,7 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
                         </p>
                     </div>
 
-                    {/* Feature 7 - Grids */}
+                    {/* Feature 8 - Grids */}
                     <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-8 backdrop-blur transition-all hover:border-zinc-700">
                         <h3 className="text-xl font-bold">Layout Guides</h3>
                         <p className="mt-4 text-sm leading-relaxed text-zinc-300">
@@ -267,7 +275,7 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
                         </p>
                     </div>
 
-                    {/* Feature 8 - Blend Modes */}
+                    {/* Feature 9 - Blend Modes */}
                     <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-8 backdrop-blur transition-all hover:border-zinc-700">
                         <h3 className="text-xl font-bold">Creative Styling</h3>
                         <p className="mt-4 text-sm leading-relaxed text-zinc-300">
@@ -275,7 +283,7 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
                         </p>
                     </div>
 
-                    {/* Feature 9 - Smart Grouping */}
+                    {/* Feature 10 - Smart Grouping */}
                     <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-8 backdrop-blur transition-all hover:border-zinc-700">
                         <h3 className="text-xl font-bold">Grouped Elements</h3>
                         <p className="mt-4 text-sm leading-relaxed text-zinc-300">
@@ -283,7 +291,7 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
                         </p>
                     </div>
 
-                    {/* Feature 10 - Scene Export */}
+                    {/* Feature 11 - Scene Export */}
                     <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-8 backdrop-blur transition-all hover:border-zinc-700">
                         <h3 className="text-xl font-bold">Scene Export</h3>
                         <p className="mt-4 text-sm leading-relaxed text-zinc-300">

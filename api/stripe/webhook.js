@@ -19,6 +19,136 @@ const getSubscriptionPlan = (subscription) => {
   return PRICE_ID_TO_PLAN[priceId] || 'unknown';
 };
 
+const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
+
+const getNotifyEmail = () =>
+  normalizeEmail(
+    process.env.SIGNUP_NOTIFY_EMAIL ||
+    process.env.SENDGRID_TO_EMAIL ||
+    process.env.CONTACT_TO_EMAIL ||
+    process.env.SENDGRID_FROM_EMAIL ||
+    'hello@vadeo.cloud',
+  );
+
+const getFromEmail = () =>
+  normalizeEmail(process.env.SENDGRID_FROM_EMAIL || 'hello@vadeo.cloud');
+
+const sendNotificationEmail = async ({
+  apiKey,
+  fromEmail,
+  toEmail,
+  subject,
+  htmlBody,
+  textBody,
+}) => {
+  if (!apiKey || !fromEmail || !toEmail) return;
+
+  const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      personalizations: [{ to: [{ email: toEmail }], subject }],
+      from: { email: fromEmail, name: 'Vadeo' },
+      content: [
+        { type: 'text/plain', value: textBody },
+        { type: 'text/html', value: htmlBody },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(`SendGrid notification failed: ${JSON.stringify(payload)}`);
+  }
+};
+
+const notifyPurchase = async ({ stripeApiKey, session }) => {
+  const userEmail =
+    session.customer_details?.email ||
+    session.customer_email ||
+    session.metadata?.userEmail ||
+    'unknown';
+  const planId = session.metadata?.planId || 'unknown';
+  const subject = 'Vadeo: New subscription purchase';
+
+  await sendNotificationEmail({
+    apiKey: stripeApiKey,
+    fromEmail: getFromEmail(),
+    toEmail: getNotifyEmail(),
+    subject,
+    textBody: [
+      'New Vadeo subscription purchase',
+      '',
+      `Email: ${userEmail}`,
+      `Plan: ${planId}`,
+      `Checkout Session: ${session.id}`,
+      `Subscription: ${session.subscription || 'n/a'}`,
+    ].join('\n'),
+    htmlBody: `
+      <h3>New Vadeo subscription purchase</h3>
+      <p><strong>Email:</strong> ${userEmail}</p>
+      <p><strong>Plan:</strong> ${planId}</p>
+      <p><strong>Checkout Session:</strong> ${session.id}</p>
+      <p><strong>Subscription:</strong> ${session.subscription || 'n/a'}</p>
+    `,
+  });
+};
+
+const notifyCancellationRequested = async ({ stripeApiKey, subscription }) => {
+  const subject = 'Vadeo: Subscription cancellation scheduled';
+  const plan = getSubscriptionPlan(subscription);
+  const userEmail = subscription.metadata?.userEmail || 'unknown';
+
+  await sendNotificationEmail({
+    apiKey: stripeApiKey,
+    fromEmail: getFromEmail(),
+    toEmail: getNotifyEmail(),
+    subject,
+    textBody: [
+      'A Vadeo subscription was set to cancel at period end.',
+      '',
+      `Email: ${userEmail}`,
+      `Plan: ${plan}`,
+      `Subscription: ${subscription.id}`,
+    ].join('\n'),
+    htmlBody: `
+      <h3>Vadeo cancellation scheduled</h3>
+      <p><strong>Email:</strong> ${userEmail}</p>
+      <p><strong>Plan:</strong> ${plan}</p>
+      <p><strong>Subscription:</strong> ${subscription.id}</p>
+    `,
+  });
+};
+
+const notifyCancellationComplete = async ({ stripeApiKey, subscription }) => {
+  const subject = 'Vadeo: Subscription cancelled';
+  const plan = getSubscriptionPlan(subscription);
+  const userEmail = subscription.metadata?.userEmail || 'unknown';
+
+  await sendNotificationEmail({
+    apiKey: stripeApiKey,
+    fromEmail: getFromEmail(),
+    toEmail: getNotifyEmail(),
+    subject,
+    textBody: [
+      'A Vadeo subscription was cancelled.',
+      '',
+      `Email: ${userEmail}`,
+      `Plan: ${plan}`,
+      `Subscription: ${subscription.id}`,
+    ].join('\n'),
+    htmlBody: `
+      <h3>Vadeo subscription cancelled</h3>
+      <p><strong>Email:</strong> ${userEmail}</p>
+      <p><strong>Plan:</strong> ${plan}</p>
+      <p><strong>Subscription:</strong> ${subscription.id}</p>
+    `,
+  });
+};
+
 const summarizeEvent = (event) => {
   switch (event.type) {
     case 'checkout.session.completed': {
@@ -98,6 +228,32 @@ export default async function handler(req, res) {
 
     const summary = summarizeEvent(event);
     console.log('Stripe webhook received:', JSON.stringify(summary));
+
+    if (event.type === 'checkout.session.completed') {
+      await notifyPurchase({ stripeApiKey: process.env.SENDGRID_API_KEY, session: event.data.object });
+    }
+
+    if (event.type === 'customer.subscription.updated') {
+      const subscription = event.data.object;
+      const previous = event.data.previous_attributes || {};
+      const justScheduledCancellation =
+        subscription.cancel_at_period_end === true &&
+        previous.cancel_at_period_end !== true;
+
+      if (justScheduledCancellation) {
+        await notifyCancellationRequested({
+          stripeApiKey: process.env.SENDGRID_API_KEY,
+          subscription,
+        });
+      }
+    }
+
+    if (event.type === 'customer.subscription.deleted') {
+      await notifyCancellationComplete({
+        stripeApiKey: process.env.SENDGRID_API_KEY,
+        subscription: event.data.object,
+      });
+    }
 
     res.status(200).json({ received: true });
   } catch (error) {

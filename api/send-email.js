@@ -10,10 +10,10 @@ const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
 const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(value));
 
 const getFromEmail = () => String(process.env.SENDGRID_FROM_EMAIL || '').trim();
-const getDefaultNotifyEmail = () =>
+const getDefaultNotifyEmail = (type) =>
     normalizeEmail(
-        process.env.SIGNUP_NOTIFY_EMAIL ||
-        process.env.CONTACT_TO_EMAIL ||
+        (type === 'signup' ? process.env.SIGNUP_NOTIFY_EMAIL : '') ||
+        (type === 'contact' ? process.env.CONTACT_TO_EMAIL : '') ||
         process.env.SENDGRID_TO_EMAIL ||
         getFromEmail() ||
         'hello@vadeo.cloud'
@@ -68,7 +68,7 @@ export default async function handler(req, res) {
 
         const SENDGRID_API_KEY = String(process.env.SENDGRID_API_KEY || '').trim();
         const fromEmail = getFromEmail();
-        const notifyEmail = getDefaultNotifyEmail();
+        const notifyEmail = getDefaultNotifyEmail(type);
 
         if (!SENDGRID_API_KEY) {
             console.error('Missing SENDGRID_API_KEY');

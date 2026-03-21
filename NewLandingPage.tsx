@@ -58,7 +58,7 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
             </div>
 
             {/* Navigation */}
-            <Navigation onGetStarted={onStartEditing} />
+            <Navigation onGetStarted={onStartEditing} ctaLabel="Try It Now" />
 
             {/* Hero Section */}
             <section className="relative h-screen min-h-screen w-full flex items-center justify-center overflow-hidden bg-black border-b border-white/5">

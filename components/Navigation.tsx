@@ -5,9 +5,10 @@ import vadeoLogoWhite from '../Logo/vADeo-Logo-White.svg';
 
 interface NavigationProps {
     onGetStarted?: () => void;
+    ctaLabel?: string;
 }
 
-const Navigation: React.FC<NavigationProps> = ({ onGetStarted }) => {
+const Navigation: React.FC<NavigationProps> = ({ onGetStarted, ctaLabel = 'Get Started' }) => {
     const navigate = useNavigate();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isVisible, setIsVisible] = useState(true);
@@ -91,7 +92,7 @@ const Navigation: React.FC<NavigationProps> = ({ onGetStarted }) => {
                         onClick={() => handleNavigation('/signup')}
                         className="text-white hover:text-zinc-400 transition-colors text-[0.95rem]"
                     >
-                        Get Started
+                        {ctaLabel}
                     </button>
                 </div>
             </div>
@@ -109,7 +110,7 @@ const Navigation: React.FC<NavigationProps> = ({ onGetStarted }) => {
                         onClick={() => handleNavigation('/signup')}
                         className="text-white text-left py-2 hover:text-zinc-400 transition-colors"
                     >
-                        Get Started
+                        {ctaLabel}
                     </button>
                 </div>
             )}

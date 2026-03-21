@@ -1,3 +1,51 @@
+const escapeHtml = (value) =>
+    String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
+const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(value));
+
+const getFromEmail = () => String(process.env.SENDGRID_FROM_EMAIL || '').trim();
+const getDefaultNotifyEmail = () =>
+    normalizeEmail(
+        process.env.SIGNUP_NOTIFY_EMAIL ||
+        process.env.CONTACT_TO_EMAIL ||
+        process.env.SENDGRID_TO_EMAIL ||
+        getFromEmail() ||
+        'hello@vadeo.cloud'
+    );
+
+const getAppBaseUrl = (req) => {
+    if (process.env.APP_BASE_URL) {
+        return process.env.APP_BASE_URL.replace(/\/$/, '');
+    }
+
+    const proto = req.headers['x-forwarded-proto'] || 'https';
+    const host = req.headers['x-forwarded-host'] || req.headers.host;
+    return `${proto}://${host}`;
+};
+
+const sendSendgridMail = async ({ apiKey, fromEmail, toEmail, subject, textBody, htmlBody }) => {
+    return fetch('https://api.sendgrid.com/v3/mail/send', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+            personalizations: [{ to: [{ email: toEmail }], subject }],
+            from: { email: fromEmail, name: 'Vadeo' },
+            content: [
+                { type: 'text/plain', value: textBody },
+                { type: 'text/html', value: htmlBody },
+            ],
+        }),
+    });
+};
 
 export default async function handler(req, res) {
     if (req.method === 'OPTIONS') {
@@ -18,11 +66,19 @@ export default async function handler(req, res) {
             return;
         }
 
-        const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
+        const SENDGRID_API_KEY = String(process.env.SENDGRID_API_KEY || '').trim();
+        const fromEmail = getFromEmail();
+        const notifyEmail = getDefaultNotifyEmail();
 
         if (!SENDGRID_API_KEY) {
             console.error('Missing SENDGRID_API_KEY');
             res.status(500).json({ error: 'Server configuration error' });
+            return;
+        }
+
+        if (!fromEmail) {
+            console.error('Missing SENDGRID_FROM_EMAIL');
+            res.status(500).json({ error: 'Missing sender configuration' });
             return;
         }
 
@@ -31,85 +87,111 @@ export default async function handler(req, res) {
         let adminContent = message;
 
         if (type === 'signup') {
-            adminSubject = 'New User Signup Notification';
+            adminSubject = 'Vadeo: New user signup';
             adminContent = `
-            <h3>New User Signup!</h3>
-            <p><strong>Email:</strong> ${to}</p>
-            <p><strong>Name:</strong> ${message}</p>
+            <h3>New user signup</h3>
+            <p><strong>Email:</strong> ${escapeHtml(to)}</p>
+            <p><strong>Name:</strong> ${escapeHtml(message)}</p>
         `;
         } else if (type === 'contact') {
             adminContent = `
             <h3>New Contact Form Submission</h3>
-            <p><strong>From:</strong> ${to}</p>
+            <p><strong>From:</strong> ${escapeHtml(to)}</p>
             <p><strong>Message:</strong></p>
-            <p>${message}</p>
+            <p>${escapeHtml(message)}</p>
         `;
         } else if (type === 'purchase') {
-            adminSubject = 'New Credit Purchase 💰';
+            adminSubject = 'Vadeo: New subscription purchase';
             const { planName, credits, price } = JSON.parse(message);
             adminContent = `
             <h3>New Purchase!</h3>
-            <p><strong>User Email:</strong> ${to}</p>
-            <p><strong>Plan:</strong> ${planName}</p>
-            <p><strong>Credits:</strong> ${credits}</p>
-            <p><strong>Amount:</strong> $${price}</p>
+            <p><strong>User Email:</strong> ${escapeHtml(to)}</p>
+            <p><strong>Plan:</strong> ${escapeHtml(planName)}</p>
+            <p><strong>Credits:</strong> ${escapeHtml(String(credits ?? '—'))}</p>
+            <p><strong>Amount:</strong> $${escapeHtml(String(price ?? '—'))}</p>
             `;
         }
 
         const emailPromises = [];
 
         // Push Admin Notification
-        emailPromises.push(fetch('https://api.sendgrid.com/v3/mail/send', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${SENDGRID_API_KEY}`,
-            },
-            body: JSON.stringify({
-                personalizations: [{ to: [{ email: 'hello@batchocanvas.com' }], subject: adminSubject }],
-                from: { email: 'hello@batchocanvas.com', name: 'BatchoCanvas Bot' },
-                content: [{ type: 'text/html', value: adminContent }],
-            }),
-        }));
+        if (isValidEmail(notifyEmail)) {
+            emailPromises.push(sendSendgridMail({
+                apiKey: SENDGRID_API_KEY,
+                fromEmail,
+                toEmail: notifyEmail,
+                subject: adminSubject,
+                textBody: `${adminSubject}\n\n${String(message || '').trim()}`,
+                htmlBody: adminContent,
+            }));
+        }
 
         // 2. Prepare Welcome Email (Only for signup)
         if (type === 'signup') {
-            const welcomeSubject = "Welcome to batchoCanvas";
+            const safeName = String(message || '').trim() || 'there';
+            const firstName = safeName.split(/\s+/)[0] || 'there';
+            const pricingUrl = `${getAppBaseUrl(req)}/pricing`;
+            const welcomeSubject = "Welcome to Vadeo";
+            const welcomeText = [
+                `Hi ${firstName},`,
+                '',
+                'Welcome to Vadeo.',
+                '',
+                'Your account is ready.',
+                '',
+                'Vadeo is designed to help you turn product shots and campaign images into polished video ads faster. You can build scenes, shape layouts, generate motion with AI, and export campaign-ready creative from one workspace.',
+                '',
+                "Here's what you can do right away:",
+                '- Choose the plan that fits your workflow',
+                '- Build your first ad scene in the workspace',
+                '- Generate motion from your visuals with AI',
+                '- Export polished creative for campaigns and social',
+                '',
+                `Open pricing: ${pricingUrl}`,
+                '',
+                'To get started:',
+                '1. Choose your plan',
+                '2. Open the editor',
+                '3. Build and generate your first video ad',
+                '',
+                'We look forward to seeing what you create with Vadeo.',
+                '',
+                'The Vadeo Team',
+            ].join('\n');
             const welcomeContent = `
-            <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto;">
-                <h1 style="color: #000;">Welcome to batchoCanvas.</h1>
-                <p>You now have access to a new kind of design canvas—one built for structure, layout, and motion. Design with layers, scenes, grids, and grouping, then export exactly what you need, from Videos to PDFs.</p>
-                <p>There’s no timeline to manage and no rigid workflow to learn. Everything starts on the canvas.</p>
-                <p><strong>A simple way to begin:</strong></p>
-                <ul>
-                    <li>Add content to the canvas</li>
-                    <li>Arrange and layer with precision</li>
-                    <li>Export when it’s ready</li>
+            <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#333;line-height:1.6;font-size:16px;">
+                <p>Hi ${escapeHtml(firstName)},</p>
+                <p>Welcome to Vadeo.</p>
+                <p>Your account is ready.</p>
+                <p>Vadeo is designed to help you turn product shots and campaign images into polished video ads faster. You can build scenes, shape layouts, generate motion with AI, and export campaign-ready creative from one workspace.</p>
+                <p>Here’s what you can do right away:</p>
+                <ul style="padding-left:20px;">
+                    <li>Choose the plan that fits your workflow</li>
+                    <li>Build your first ad scene in the workspace</li>
+                    <li>Generate motion from your visuals with AI</li>
+                    <li>Export polished creative for campaigns and social</li>
                 </ul>
-                <p>batchoCanvas is designed to stay out of your way and give you control where it matters.</p>
-                <p><strong>Verification Required:</strong> If you haven't verified your email yet, please do so now to unlock all features.</p>
-                <br/>
-                <p>Start creating when you’re ready.</p>
-                <div style="margin-top: 25px;">
-                    <a href="https://www.batchocanvas.com/signin" style="background-color: #667eea; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Verify Email & Start Creating →</a>
+                <div style="margin:30px 0;">
+                    <a href="${escapeHtml(pricingUrl)}" style="background-color:#000;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;font-weight:bold;display:inline-block;">Choose a Vadeo plan →</a>
                 </div>
-                <br/>
-                <p style="color: #888; fontSize: 12px;">— The batchoCanvas Team</p>
+                <p>To get started:</p>
+                <ol style="padding-left:20px;">
+                    <li>Choose your plan</li>
+                    <li>Open the editor</li>
+                    <li>Build and generate your first video ad</li>
+                </ol>
+                <p>We look forward to seeing what you create with Vadeo.</p>
+                <p>The Vadeo Team</p>
             </div>
-
         `;
 
-            emailPromises.push(fetch('https://api.sendgrid.com/v3/mail/send', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${SENDGRID_API_KEY}`,
-                },
-                body: JSON.stringify({
-                    personalizations: [{ to: [{ email: to }], subject: welcomeSubject }],
-                    from: { email: 'hello@batchocanvas.com', name: 'batchoCanvas Team' },
-                    content: [{ type: 'text/html', value: welcomeContent }],
-                }),
+            emailPromises.push(sendSendgridMail({
+                apiKey: SENDGRID_API_KEY,
+                fromEmail,
+                toEmail: normalizeEmail(to),
+                subject: welcomeSubject,
+                textBody: welcomeText,
+                htmlBody: welcomeContent,
             }));
         }
 
@@ -129,7 +211,7 @@ export default async function handler(req, res) {
                 body: JSON.stringify({
                     list_ids: listIds,
                     contacts: [{
-                        email: to,
+                        email: normalizeEmail(to),
                         first_name: firstName,
                         last_name: lastName
                     }]

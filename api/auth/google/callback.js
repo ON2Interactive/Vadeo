@@ -3,8 +3,36 @@ import {
   clearStateCookie,
   getBaseUrl,
   getStateFromRequest,
+  parseCookies,
   setSessionCookie,
 } from '../_utils.js';
+import crypto from 'crypto';
+
+const WELCOME_COOKIE_PREFIX = 'vadeo_welcome_';
+
+const appendCookie = (res, cookieValue) => {
+  const existing = res.getHeader('Set-Cookie');
+  if (!existing) {
+    res.setHeader('Set-Cookie', cookieValue);
+    return;
+  }
+
+  const next = Array.isArray(existing) ? [...existing, cookieValue] : [existing, cookieValue];
+  res.setHeader('Set-Cookie', next);
+};
+
+const getWelcomeCookieName = (email) => {
+  const normalized = String(email || '').trim().toLowerCase();
+  const digest = crypto.createHash('sha256').update(normalized).digest('hex').slice(0, 16);
+  return `${WELCOME_COOKIE_PREFIX}${digest}`;
+};
+
+const setWelcomeCookie = (res, email) => {
+  appendCookie(
+    res,
+    `${getWelcomeCookieName(email)}=1; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=31536000`,
+  );
+};
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -70,6 +98,33 @@ export default async function handler(req, res) {
         return '/dashboard';
       }
     })();
+
+    const cookies = parseCookies(req);
+    const shouldSendWelcome = redirect === '/pricing' && !cookies[getWelcomeCookieName(user.email)];
+
+    if (shouldSendWelcome) {
+      try {
+        const emailResponse = await fetch(`${getBaseUrl(req)}/api/send-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: user.email,
+            subject: 'Welcome to Vadeo',
+            message: user.name || user.email,
+            type: 'signup',
+          }),
+        });
+
+        if (emailResponse.ok) {
+          setWelcomeCookie(res, user.email);
+        } else {
+          const payload = await emailResponse.json().catch(() => ({}));
+          console.error('Failed to send Vadeo welcome email:', payload);
+        }
+      } catch (emailError) {
+        console.error('Failed to trigger welcome email:', emailError);
+      }
+    }
 
     clearStateCookie(res);
     setSessionCookie(res, sessionPayload);

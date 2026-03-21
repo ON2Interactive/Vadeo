@@ -38,7 +38,7 @@ import { useExport } from './hooks/useExport';
 import { aiService, type VeoResolution } from './aiService';
 import { dbHelpers, authHelpers, storageHelpers } from './lib/supabase';
 import { localProjectStore } from './lib/localProjects';
-import { canUseGeneration, getRemainingGenerations, recordGenerationSuccess, PLAN_GENERATION_LIMIT } from './lib/generationUsage';
+import { canUseGeneration, getGenerationCountForUser, getRemainingGenerations, recordGenerationSuccess, PLAN_GENERATION_LIMIT } from './lib/generationUsage';
 // import { db } from './db'; // Removing IDB dependency for Project saving
 import { RemixEngine } from './components/Remix/RemixEngine';
 import { useRemix } from './components/Remix/useRemix';
@@ -124,7 +124,6 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
   const [isNewProject, setIsNewProject] = useState(true);
   const [remainingGenerations, setRemainingGenerations] = useState<number>(0);
   const [accountName, setAccountName] = useState<string>('Vadeo User');
-  const [accountEmail, setAccountEmail] = useState<string>('');
 
   const handleBackClick = () => {
     if (onBackToDashboard) onBackToDashboard();
@@ -159,13 +158,11 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
         setUserId(user.id);
         setIsAdminUser(Boolean(user.is_admin));
         setAccountName(user.name || 'Vadeo User');
-        setAccountEmail(user.email || '');
         await dbHelpers.initUserProfile(user.id);
       } else {
         setUserId(null);
         setIsAdminUser(false);
         setAccountName('Vadeo User');
-        setAccountEmail('');
       }
     });
   }, []);
@@ -1675,14 +1672,13 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
         isOpen={showSettingsModal}
         onClose={() => setShowSettingsModal(false)}
         accountName={accountName}
-        accountEmail={accountEmail}
         currentPlanLabel={planLabel}
         currentPlanStatus={isAdminUser ? 'admin access' : currentPlan === 'none' ? 'inactive' : 'active'}
         usageCopy={
           isAdminUser
             ? 'Admin access is active. You can enter the editor without a paid plan.'
             : currentPlan === 'premium' || currentPlan === 'standard'
-              ? `${remainingGenerations} of ${PLAN_GENERATION_LIMIT} generations remaining.`
+              ? `${getGenerationCountForUser(userId)} of ${PLAN_GENERATION_LIMIT} generations used. ${remainingGenerations} remaining.`
               : currentPlan === 'starter'
                 ? 'Starter is active. Generation tools are disabled on this plan.'
                 : 'Choose a plan to unlock editor access and generation.'

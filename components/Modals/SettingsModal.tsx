@@ -1,10 +1,10 @@
 import React from 'react';
+import heroDarkImage from '../../Assets/Hero-Dark.png';
 
 type SettingsModalProps = {
   isOpen: boolean;
   onClose: () => void;
   accountName: string;
-  accountEmail: string;
   currentPlanLabel: string;
   currentPlanStatus: string;
   usageCopy: string;
@@ -20,7 +20,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   onClose,
   accountName,
-  accountEmail,
   currentPlanLabel,
   currentPlanStatus,
   usageCopy,
@@ -36,12 +35,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   return (
     <div className="workspace-settings-modal" role="dialog" aria-modal="true" aria-label="Settings">
       <div className="workspace-settings-media">
-        <img alt="" className="workspace-settings-image" src="/Generate.png" />
+        <img alt="" className="workspace-settings-image" src={heroDarkImage} />
         <div className="workspace-settings-image-overlay" />
         <div className="workspace-settings-badge">
-          <span>Vadeo account</span>
           <strong>{accountName || 'Vadeo User'}</strong>
-          <em>{usageCopy}</em>
         </div>
       </div>
 
@@ -58,12 +55,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         <img alt="Vadeo" className="workspace-settings-logo" src="/vadeo-logo-white.png" />
 
         <div className="workspace-settings-sections">
-          <section className="workspace-settings-section">
-            <h2>Account Details</h2>
-            <p>{accountName || 'Vadeo User'}</p>
-            <p>{accountEmail}</p>
-          </section>
-
           <section className="workspace-settings-section">
             <h2>Current Plan</h2>
             <div className="workspace-settings-line">

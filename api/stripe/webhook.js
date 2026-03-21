@@ -1,5 +1,5 @@
 import Stripe from 'stripe';
-import { getSupabaseAdmin, mapPriceIdToPlan } from '../data/_supabase.js';
+import { getSupabaseAdmin, mapPriceIdToPlan } from '../../lib/server/supabaseAdmin.js';
 
 const readRawBody = async (req) => {
   const chunks = [];

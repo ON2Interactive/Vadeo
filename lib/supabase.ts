@@ -45,6 +45,17 @@ const fetchJson = async <T>(input: RequestInfo | URL, init?: RequestInit): Promi
   return payload as T;
 };
 
+const buildDataUrl = (scope: string, params?: Record<string, string>) => {
+  const target = new URL('/api/data', typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
+  target.searchParams.set('scope', scope);
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      target.searchParams.set(key, value);
+    });
+  }
+  return `${target.pathname}${target.search}`;
+};
+
 const buildSession = async () => {
   try {
     return await fetchJson<SessionResponse>('/api/auth/session');
@@ -117,7 +128,7 @@ export const dbHelpers = {
       trial: TrialState;
       subscription: any;
       generationUsage: { used: number; remaining: number; limit: number };
-    }>('/api/data/access');
+    }>(buildDataUrl('access'));
   },
 
   async getUserProfile(userId: string) {
@@ -128,7 +139,7 @@ export const dbHelpers = {
     }
 
     try {
-      const data = await fetchJson<any>('/api/data/profile');
+      const data = await fetchJson<any>(buildDataUrl('profile'));
       return { data, error: null };
     } catch (error) {
       return { data: null, error };
@@ -137,9 +148,9 @@ export const dbHelpers = {
 
   async updateUserCredits(userId: string, credits: number) {
     try {
-      const data = await fetchJson<any>('/api/data/profile', {
+      const data = await fetchJson<any>(buildDataUrl('profile'), {
         method: 'PATCH',
-        body: JSON.stringify({ credits }),
+        body: JSON.stringify({ scope: 'profile', credits }),
       });
       return { data, error: null };
     } catch (error) {
@@ -155,7 +166,10 @@ export const dbHelpers = {
     }
 
     try {
-      const data = await fetchJson<any>('/api/data/profile', { method: 'POST' });
+      const data = await fetchJson<any>(buildDataUrl('profile'), {
+        method: 'POST',
+        body: JSON.stringify({ scope: 'profile' }),
+      });
       return { data, error: null };
     } catch (error) {
       return { data: null, error };
@@ -170,7 +184,10 @@ export const dbHelpers = {
     }
 
     try {
-      const data = await fetchJson<TrialState>('/api/data/trial', { method: 'POST' });
+      const data = await fetchJson<TrialState>(buildDataUrl('trial'), {
+        method: 'POST',
+        body: JSON.stringify({ scope: 'trial' }),
+      });
       return { data, error: null };
     } catch (error) {
       return { data: null, error };
@@ -185,7 +202,7 @@ export const dbHelpers = {
     }
 
     try {
-      const data = await fetchJson<TrialState>('/api/data/trial');
+      const data = await fetchJson<TrialState>(buildDataUrl('trial'));
       return { data, error: null };
     } catch (error) {
       return { data: { status: 'none', startedAt: null, expiresAt: null }, error };
@@ -200,7 +217,7 @@ export const dbHelpers = {
     }
 
     try {
-      const data = await fetchJson<any>('/api/data/subscription');
+      const data = await fetchJson<any>(buildDataUrl('subscription'));
       return { data, error: null };
     } catch (error) {
       return { data: null, error };
@@ -209,9 +226,9 @@ export const dbHelpers = {
 
   async updateSubscription(updates: Record<string, unknown>) {
     try {
-      const data = await fetchJson<any>('/api/data/subscription', {
+      const data = await fetchJson<any>(buildDataUrl('subscription'), {
         method: 'PUT',
-        body: JSON.stringify(updates),
+        body: JSON.stringify({ scope: 'subscription', ...updates }),
       });
       return { data, error: null };
     } catch (error) {
@@ -227,7 +244,7 @@ export const dbHelpers = {
     }
 
     try {
-      const data = await fetchJson<{ used: number; remaining: number; limit: number }>('/api/data/generation');
+      const data = await fetchJson<{ used: number; remaining: number; limit: number }>(buildDataUrl('generation'));
       return { data, error: null };
     } catch (error) {
       return { data: { used: 0, remaining: 0, limit: 20 }, error };
@@ -242,8 +259,9 @@ export const dbHelpers = {
     }
 
     try {
-      const data = await fetchJson<{ used: number; remaining: number; limit: number }>('/api/data/generation', {
+      const data = await fetchJson<{ used: number; remaining: number; limit: number }>(buildDataUrl('generation'), {
         method: 'POST',
+        body: JSON.stringify({ scope: 'generation' }),
       });
       return { data, error: null };
     } catch (error) {
@@ -258,7 +276,7 @@ export const dbHelpers = {
     }
 
     try {
-      const data = await fetchJson<any[]>('/api/data/projects');
+      const data = await fetchJson<any[]>(buildDataUrl('projects'));
       return { data, error: null };
     } catch (error) {
       return { data: [], error };
@@ -272,9 +290,10 @@ export const dbHelpers = {
     }
 
     try {
-      const data = await fetchJson<any>('/api/data/projects', {
+      const data = await fetchJson<any>(buildDataUrl('projects'), {
         method: 'POST',
         body: JSON.stringify({
+          scope: 'projects',
           name: projectName,
           editor_state: editorState,
           thumbnail,
@@ -288,9 +307,10 @@ export const dbHelpers = {
 
   async updateProject(projectId: string, projectName: string, editorState: any, thumbnail?: string) {
     try {
-      const data = await fetchJson<any>('/api/data/project', {
+      const data = await fetchJson<any>(buildDataUrl('project'), {
         method: 'PATCH',
         body: JSON.stringify({
+          scope: 'project',
           id: projectId,
           name: projectName,
           editor_state: editorState,
@@ -305,9 +325,9 @@ export const dbHelpers = {
 
   async deleteProject(projectId: string) {
     try {
-      await fetchJson('/api/data/project', {
+      await fetchJson(buildDataUrl('project'), {
         method: 'DELETE',
-        body: JSON.stringify({ id: projectId }),
+        body: JSON.stringify({ scope: 'project', id: projectId }),
       });
       return { error: null };
     } catch (error) {
@@ -317,8 +337,7 @@ export const dbHelpers = {
 
   async getProject(projectId: string) {
     try {
-      const query = new URLSearchParams({ id: projectId }).toString();
-      const data = await fetchJson<any>(`/api/data/project?${query}`);
+      const data = await fetchJson<any>(buildDataUrl('project', { id: projectId }));
       return { data, error: null };
     } catch (error) {
       return { data: null, error };
@@ -365,7 +384,7 @@ export const storageHelpers = {
 export const adminHelpers = {
   async getAllUsers() {
     try {
-      const data = await fetchJson<any[]>('/api/data/admin?view=users');
+      const data = await fetchJson<any[]>(buildDataUrl('admin', { view: 'users' }));
       return { data, error: null };
     } catch (error) {
       return { data: [], error };
@@ -374,7 +393,7 @@ export const adminHelpers = {
 
   async getUserStats() {
     try {
-      const data = await fetchJson<any>('/api/data/admin?view=stats');
+      const data = await fetchJson<any>(buildDataUrl('admin', { view: 'stats' }));
       return { data, error: null };
     } catch (error) {
       return { data: null, error };
@@ -387,9 +406,9 @@ export const adminHelpers = {
 
   async deleteUser(userId: string) {
     try {
-      await fetchJson('/api/data/admin', {
+      await fetchJson(buildDataUrl('admin'), {
         method: 'DELETE',
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({ scope: 'admin', userId }),
       });
       return { error: null };
     } catch (error) {
@@ -399,9 +418,9 @@ export const adminHelpers = {
 
   async toggleAdminStatus(userId: string, isAdmin: boolean) {
     try {
-      const data = await fetchJson<any>('/api/data/admin', {
+      const data = await fetchJson<any>(buildDataUrl('admin'), {
         method: 'PATCH',
-        body: JSON.stringify({ userId, is_admin: isAdmin }),
+        body: JSON.stringify({ scope: 'admin', userId, is_admin: isAdmin }),
       });
       return { data, error: null };
     } catch (error) {

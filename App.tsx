@@ -274,6 +274,32 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
     window.location.assign(`/pricing?plan=${plan}`);
   };
 
+  const handleManageBilling = async () => {
+    try {
+      setSettingsBusyAction('billing_portal');
+      setSettingsError(null);
+
+      const response = await fetch('/api/stripe/create-billing-portal-session', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload?.url) {
+        throw new Error(payload?.error || 'Unable to open billing portal right now.');
+      }
+
+      window.location.assign(payload.url);
+    } catch (error) {
+      setSettingsError(error instanceof Error ? error.message : 'Unable to open billing portal right now.');
+    } finally {
+      setSettingsBusyAction(null);
+    }
+  };
+
   const handleSettingsLogout = async () => {
     try {
       setSettingsBusyAction('logout');
@@ -1683,6 +1709,8 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
                 ? 'Starter is active. Generation tools are disabled on this plan.'
                 : 'Choose a plan to unlock editor access and generation.'
         }
+        canManageBilling={!isAdminUser && currentPlan !== 'none'}
+        onManageBilling={() => void handleManageBilling()}
         onUpgradeStarter={() => handlePlanSelectFromSettings('starter')}
         onUpgradeStandard={() => handlePlanSelectFromSettings('standard')}
         onUpgradePremium={() => handlePlanSelectFromSettings('premium')}

@@ -7,6 +7,8 @@ type SettingsModalProps = {
   currentPlanLabel: string;
   currentPlanStatus: string;
   usageCopy: string;
+  canManageBilling: boolean;
+  onManageBilling: () => void;
   onUpgradeStarter: () => void;
   onUpgradeStandard: () => void;
   onUpgradePremium: () => void;
@@ -22,6 +24,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   currentPlanLabel,
   currentPlanStatus,
   usageCopy,
+  canManageBilling,
+  onManageBilling,
   onUpgradeStarter,
   onUpgradeStandard,
   onUpgradePremium,
@@ -61,6 +65,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
               <span>{currentPlanStatus}</span>
             </div>
             <div className="workspace-settings-actions">
+              <button
+                className="workspace-settings-link workspace-settings-link-muted"
+                type="button"
+                disabled={!canManageBilling || busyAction !== null}
+                onClick={onManageBilling}
+              >
+                Manage
+              </button>
               <button className="workspace-settings-link" type="button" disabled={busyAction !== null} onClick={onUpgradeStarter}>
                 Starter
               </button>

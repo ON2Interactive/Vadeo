@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, SendHorizontal, Upload, Video, X } from 'lucide-react';
 import { AspectRatio } from '../../types';
+import type { MotionAnimationPreset } from './MotionModal';
 
 type GenerationTab = 'generate' | 'frame-video' | 'ref-video' | 'creator';
 type AudioType = 'auto' | 'dialogue' | 'sound-effects' | 'ambient';
@@ -10,13 +11,21 @@ interface Props {
   onGenerateText: (prompt: string, aspectRatio: AspectRatio, audioEnabled: boolean, audioType: AudioType, imageFile?: File | null) => void;
   onGenerateFrameVideo: (startFile: File, endFile: File, prompt: string, aspectRatio: AspectRatio, audioEnabled: boolean, audioType: AudioType) => void;
   onGenerateRefVideo: (files: File[], prompt: string, aspectRatio: AspectRatio, audioEnabled: boolean, audioType: AudioType) => void;
-  onStartCreator: (aspectRatio: AspectRatio, duration: number, websiteUrl: string, brief: string, headline: string, cta: string, files: File[]) => void;
+  onStartCreator: (aspectRatio: AspectRatio, duration: number, animation: MotionAnimationPreset, websiteUrl: string, brief: string, headline: string, cta: string, files: File[]) => void;
   isGenerating: boolean;
   initialAspectRatio: AspectRatio;
 }
 
 const ASPECT_OPTIONS: AspectRatio[] = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9'];
 const CREATOR_DURATION_OPTIONS = [5, 10, 15, 30, 45, 60] as const;
+const CREATOR_ANIMATION_OPTIONS: Array<{ value: MotionAnimationPreset; label: string }> = [
+  { value: 'fade', label: 'Fade' },
+  { value: 'crossfade', label: 'Crossfade' },
+  { value: 'slide-up', label: 'Slide Up' },
+  { value: 'slide-left', label: 'Slide Left' },
+  { value: 'zoom-in', label: 'Zoom In' },
+  { value: 'ken-burns', label: 'Ken Burns' },
+];
 const AUDIO_TYPE_OPTIONS: Array<{ value: AudioType; label: string }> = [
   { value: 'auto', label: 'Auto' },
   { value: 'dialogue', label: 'Dialogue' },
@@ -51,6 +60,7 @@ const VadeoAdModal: React.FC<Props> = ({
   const [refPrompt, setRefPrompt] = useState('');
   const [creatorWebsiteUrl, setCreatorWebsiteUrl] = useState('');
   const [creatorDuration, setCreatorDuration] = useState<number>(15);
+  const [creatorAnimation, setCreatorAnimation] = useState<MotionAnimationPreset>('crossfade');
   const [creatorBrief, setCreatorBrief] = useState('');
   const [creatorHeadline, setCreatorHeadline] = useState('');
   const [creatorCta, setCreatorCta] = useState('');
@@ -259,7 +269,7 @@ const VadeoAdModal: React.FC<Props> = ({
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-3">
             <label className="text-xs text-zinc-500">Aspect ratio</label>
             <select
@@ -287,6 +297,22 @@ const VadeoAdModal: React.FC<Props> = ({
               {CREATOR_DURATION_OPTIONS.map((option) => (
                 <option key={option} value={option} className="bg-[#121214] text-white">
                   {option}s
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-xs text-zinc-500">Animation</label>
+            <select
+              value={creatorAnimation}
+              onChange={(e) => setCreatorAnimation(e.target.value as MotionAnimationPreset)}
+              disabled={isGenerating}
+              className={`${inputClass} appearance-none`}
+            >
+              {CREATOR_ANIMATION_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value} className="bg-[#121214] text-white">
+                  {option.label}
                 </option>
               ))}
             </select>
@@ -703,7 +729,7 @@ const VadeoAdModal: React.FC<Props> = ({
 
   const handleSubmit = () => {
     if (activeTab === 'creator') {
-      onStartCreator(aspectRatio, creatorDuration, creatorWebsiteUrl.trim(), creatorBrief, creatorHeadline, creatorCta, creatorFiles);
+      onStartCreator(aspectRatio, creatorDuration, creatorAnimation, creatorWebsiteUrl.trim(), creatorBrief, creatorHeadline, creatorCta, creatorFiles);
       return;
     }
 

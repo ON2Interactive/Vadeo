@@ -2,15 +2,31 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, Upload, X } from 'lucide-react';
 import { AspectRatio } from '../../types';
 
+export type MotionAnimationPreset =
+  | 'fade'
+  | 'crossfade'
+  | 'slide-up'
+  | 'slide-left'
+  | 'zoom-in'
+  | 'ken-burns';
+
 interface Props {
   onClose: () => void;
-  onStartMotion: (aspectRatio: AspectRatio, duration: number, timingPrompt: string, brief: string, headline: string, cta: string, files: File[]) => void;
+  onStartMotion: (aspectRatio: AspectRatio, duration: number, animation: MotionAnimationPreset, timingPrompt: string, brief: string, headline: string, cta: string, files: File[]) => void;
   isGenerating: boolean;
   initialAspectRatio: AspectRatio;
 }
 
 const ASPECT_OPTIONS: AspectRatio[] = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9'];
 const DURATION_OPTIONS = [5, 10, 15, 30, 45, 60] as const;
+const ANIMATION_OPTIONS: Array<{ value: MotionAnimationPreset; label: string }> = [
+  { value: 'fade', label: 'Fade' },
+  { value: 'crossfade', label: 'Crossfade' },
+  { value: 'slide-up', label: 'Slide Up' },
+  { value: 'slide-left', label: 'Slide Left' },
+  { value: 'zoom-in', label: 'Zoom In' },
+  { value: 'ken-burns', label: 'Ken Burns' },
+];
 const MOTION_UPLOAD_LIMIT = 6;
 const MOTION_UPLOAD_INPUT_ID = 'vadeo-motion-upload';
 
@@ -27,6 +43,7 @@ const MotionModal: React.FC<Props> = ({
     ASPECT_OPTIONS.includes(initialAspectRatio) ? initialAspectRatio : '16:9'
   );
   const [duration, setDuration] = useState<number>(30);
+  const [animation, setAnimation] = useState<MotionAnimationPreset>('crossfade');
   const [timingPrompt, setTimingPrompt] = useState('Transition each asset in 3s');
   const [brief, setBrief] = useState('');
   const [headline, setHeadline] = useState('');
@@ -139,7 +156,7 @@ const MotionModal: React.FC<Props> = ({
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-3">
               <label className="text-xs text-zinc-500">Aspect ratio</label>
               <select
@@ -167,6 +184,22 @@ const MotionModal: React.FC<Props> = ({
                 {DURATION_OPTIONS.map((option) => (
                   <option key={option} value={option} className="bg-[#121214] text-white">
                     {option}s
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-xs text-zinc-500">Animation</label>
+              <select
+                value={animation}
+                onChange={(e) => setAnimation(e.target.value as MotionAnimationPreset)}
+                disabled={isGenerating}
+                className={`${inputClass} appearance-none`}
+              >
+                {ANIMATION_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value} className="bg-[#121214] text-white">
+                    {option.label}
                   </option>
                 ))}
               </select>
@@ -224,7 +257,7 @@ const MotionModal: React.FC<Props> = ({
 
         <div className="mt-8 flex justify-end">
           <button
-            onClick={() => onStartMotion(aspectRatio, duration, timingPrompt, brief, headline, cta, files)}
+            onClick={() => onStartMotion(aspectRatio, duration, animation, timingPrompt, brief, headline, cta, files)}
             disabled={isGenerating || files.length === 0}
             className="h-14 rounded-full px-6 flex items-center justify-center transition-all active:scale-[0.98] bg-white text-black hover:bg-zinc-200 disabled:opacity-50 disabled:hover:bg-white text-sm font-semibold"
           >

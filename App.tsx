@@ -30,6 +30,7 @@ import ProModal from './components/Modals/ProModal';
 import AIModal from './components/Modals/AIModal';
 import VadeoAdModal from './components/Modals/VadeoAdModal';
 import MotionModal from './components/Modals/MotionModal';
+import type { MotionAnimationPreset } from './components/Modals/MotionModal';
 import CreditsModal from './components/Modals/CreditsModal';
 import SettingsModal from './components/Modals/SettingsModal';
 import GridOverlay, { GridType } from './components/Editor/GridOverlay';
@@ -1600,13 +1601,14 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
     }
   };
 
-  const handleStartCreator = (aspectRatio: AspectRatio, duration: number, websiteUrl: string, brief: string, headline: string, cta: string, files: File[]) => {
+  const handleStartCreator = (aspectRatio: AspectRatio, duration: number, animation: MotionAnimationPreset, websiteUrl: string, brief: string, headline: string, cta: string, files: File[]) => {
     syncCanvasToAspectRatio(aspectRatio);
     setShowVadeoAdModal(false);
 
     const summaryParts = [
       `Creator workspace prepared for ${aspectRatio}.`,
       `${duration}s selected.`,
+      `Animation: ${animation.replace('-', ' ')}.`,
       files.length > 0 ? `${files.length} image${files.length > 1 ? 's' : ''} attached.` : null,
       websiteUrl ? 'Website captured.' : null,
       brief ? 'Brief captured.' : null,
@@ -1620,7 +1622,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
     }, 4000);
   };
 
-  const handleStartMotion = async (aspectRatio: AspectRatio, duration: number, timingPrompt: string, brief: string, headline: string, cta: string, files: File[]) => {
+  const handleStartMotion = async (aspectRatio: AspectRatio, duration: number, animation: MotionAnimationPreset, timingPrompt: string, brief: string, headline: string, cta: string, files: File[]) => {
     if (files.length === 0) {
       alert('Upload at least one image or video to start Motion.');
       return;
@@ -1717,6 +1719,100 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
       const totalDurationMs = Math.max(duration * 1000, computedDurationMs);
       const transitionMs = Math.min(1000, Math.max(400, requestedStepMs * 0.3));
 
+      const getMotionKeyframes = (
+        index: number,
+        startMs: number,
+        endMs: number,
+        fadeInStart: number,
+        fadeInEnd: number,
+        fadeOutStart: number,
+        fadeOutEnd: number,
+        basePlacement: { x: number; y: number; width: number; height: number }
+      ) => {
+        const isFirst = index === 0;
+        const isLast = index === assets.length - 1;
+        const defaultFrames = [
+          { time: 0, opacity: isFirst ? 1 : 0 },
+          { time: fadeInStart, opacity: isFirst ? 1 : 0 },
+          { time: fadeInEnd, opacity: 1 },
+          { time: fadeOutStart, opacity: 1 },
+          { time: fadeOutEnd, opacity: isLast ? 1 : 0 },
+          { time: totalDurationMs, opacity: isLast ? 1 : 0 }
+        ];
+
+        if (animation === 'fade' || animation === 'crossfade') {
+          return defaultFrames;
+        }
+
+        if (animation === 'slide-up') {
+          return [
+            { time: 0, opacity: isFirst ? 1 : 0, y: basePlacement.y + (isFirst ? 0 : 60) },
+            { time: fadeInStart, opacity: isFirst ? 1 : 0, y: basePlacement.y + (isFirst ? 0 : 60) },
+            { time: fadeInEnd, opacity: 1, y: basePlacement.y },
+            { time: fadeOutStart, opacity: 1, y: basePlacement.y },
+            { time: fadeOutEnd, opacity: isLast ? 1 : 0, y: isLast ? basePlacement.y : basePlacement.y - 40 },
+            { time: totalDurationMs, opacity: isLast ? 1 : 0, y: isLast ? basePlacement.y : basePlacement.y - 40 }
+          ];
+        }
+
+        if (animation === 'slide-left') {
+          return [
+            { time: 0, opacity: isFirst ? 1 : 0, x: basePlacement.x + (isFirst ? 0 : 80) },
+            { time: fadeInStart, opacity: isFirst ? 1 : 0, x: basePlacement.x + (isFirst ? 0 : 80) },
+            { time: fadeInEnd, opacity: 1, x: basePlacement.x },
+            { time: fadeOutStart, opacity: 1, x: basePlacement.x },
+            { time: fadeOutEnd, opacity: isLast ? 1 : 0, x: isLast ? basePlacement.x : basePlacement.x - 60 },
+            { time: totalDurationMs, opacity: isLast ? 1 : 0, x: isLast ? basePlacement.x : basePlacement.x - 60 }
+          ];
+        }
+
+        if (animation === 'zoom-in') {
+          const startScale = 1.08;
+          const startWidth = basePlacement.width * startScale;
+          const startHeight = basePlacement.height * startScale;
+          const startX = basePlacement.x - (startWidth - basePlacement.width) / 2;
+          const startY = basePlacement.y - (startHeight - basePlacement.height) / 2;
+          const endScale = 1.16;
+          const endWidth = basePlacement.width * endScale;
+          const endHeight = basePlacement.height * endScale;
+          const endX = basePlacement.x - (endWidth - basePlacement.width) / 2;
+          const endY = basePlacement.y - (endHeight - basePlacement.height) / 2;
+          return [
+            { time: 0, opacity: isFirst ? 1 : 0, x: startX, y: startY, width: startWidth, height: startHeight },
+            { time: fadeInStart, opacity: isFirst ? 1 : 0, x: startX, y: startY, width: startWidth, height: startHeight },
+            { time: fadeInEnd, opacity: 1, x: startX, y: startY, width: startWidth, height: startHeight },
+            { time: Math.max(fadeInEnd, endMs - transitionMs), opacity: 1, x: endX, y: endY, width: endWidth, height: endHeight },
+            { time: fadeOutEnd, opacity: isLast ? 1 : 0, x: endX, y: endY, width: endWidth, height: endHeight },
+            { time: totalDurationMs, opacity: isLast ? 1 : 0, x: endX, y: endY, width: endWidth, height: endHeight }
+          ];
+        }
+
+        if (animation === 'ken-burns') {
+          const startScale = 1.08;
+          const endScale = 1.18;
+          const startWidth = basePlacement.width * startScale;
+          const startHeight = basePlacement.height * startScale;
+          const endWidth = basePlacement.width * endScale;
+          const endHeight = basePlacement.height * endScale;
+          const panOffsetX = Math.min(120, targetDims.w * 0.04);
+          const panOffsetY = Math.min(80, targetDims.h * 0.03);
+          const startX = basePlacement.x - (startWidth - basePlacement.width) / 2 - panOffsetX / 2;
+          const startY = basePlacement.y - (startHeight - basePlacement.height) / 2 + panOffsetY / 2;
+          const endX = basePlacement.x - (endWidth - basePlacement.width) / 2 + panOffsetX / 2;
+          const endY = basePlacement.y - (endHeight - basePlacement.height) / 2 - panOffsetY / 2;
+          return [
+            { time: 0, opacity: isFirst ? 1 : 0, x: startX, y: startY, width: startWidth, height: startHeight },
+            { time: fadeInStart, opacity: isFirst ? 1 : 0, x: startX, y: startY, width: startWidth, height: startHeight },
+            { time: fadeInEnd, opacity: 1, x: startX, y: startY, width: startWidth, height: startHeight },
+            { time: Math.max(fadeInEnd, endMs - transitionMs), opacity: 1, x: endX, y: endY, width: endWidth, height: endHeight },
+            { time: fadeOutEnd, opacity: isLast ? 1 : 0, x: endX, y: endY, width: endWidth, height: endHeight },
+            { time: totalDurationMs, opacity: isLast ? 1 : 0, x: endX, y: endY, width: endWidth, height: endHeight }
+          ];
+        }
+
+        return defaultFrames;
+      };
+
       let segmentCursorMs = 0;
       const mediaLayers: Layer[] = assets.map((asset, index) => {
         const placement = buildCoverPlacement(asset.width, asset.height);
@@ -1749,14 +1845,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
           duration: asset.mediaType === 'video' ? (asset.durationSec || segmentDurationMs / 1000) : undefined,
           visible: true,
           locked: false,
-          keyframes: [
-            { time: 0, opacity: index === 0 ? 1 : 0 },
-            { time: fadeInStart, opacity: index === 0 ? 1 : 0 },
-            { time: fadeInEnd, opacity: 1 },
-            { time: fadeOutStart, opacity: 1 },
-            { time: fadeOutEnd, opacity: index === assets.length - 1 ? 1 : 0 },
-            { time: totalDurationMs, opacity: index === assets.length - 1 ? 1 : 0 }
-          ]
+          keyframes: getMotionKeyframes(index, startMs, endMs, fadeInStart, fadeInEnd, fadeOutStart, fadeOutEnd, placement)
         } as ImageLayer;
       });
 
@@ -1880,6 +1969,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
       const summaryParts = [
         `Motion draft created in ${aspectRatio}.`,
         `${files.length} asset${files.length > 1 ? 's' : ''} sequenced in one scene.`,
+        `Animation: ${animation.replace('-', ' ')}.`,
         timingPrompt.trim() ? `Timing: ${timingPrompt.trim()}.` : `${duration}s selected.`,
       ];
 

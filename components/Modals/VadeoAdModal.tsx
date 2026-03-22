@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, SendHorizontal, Upload, Video, X } from 'lucide-react';
 import { AspectRatio } from '../../types';
 
-type GenerationTab = 'generate' | 'frame-video' | 'ref-video';
+type GenerationTab = 'generate' | 'frame-video' | 'ref-video' | 'creator';
 type AudioType = 'auto' | 'dialogue' | 'sound-effects' | 'ambient';
 
 interface Props {
@@ -10,6 +10,7 @@ interface Props {
   onGenerateText: (prompt: string, aspectRatio: AspectRatio, audioEnabled: boolean, audioType: AudioType, imageFile?: File | null) => void;
   onGenerateFrameVideo: (startFile: File, endFile: File, prompt: string, aspectRatio: AspectRatio, audioEnabled: boolean, audioType: AudioType) => void;
   onGenerateRefVideo: (files: File[], prompt: string, aspectRatio: AspectRatio, audioEnabled: boolean, audioType: AudioType) => void;
+  onStartCreator: (aspectRatio: AspectRatio, brief: string, headline: string, cta: string) => void;
   isGenerating: boolean;
   initialAspectRatio: AspectRatio;
 }
@@ -35,6 +36,7 @@ const VadeoAdModal: React.FC<Props> = ({
   onGenerateText,
   onGenerateFrameVideo,
   onGenerateRefVideo,
+  onStartCreator,
   isGenerating,
   initialAspectRatio
 }) => {
@@ -45,6 +47,9 @@ const VadeoAdModal: React.FC<Props> = ({
   const [generatePrompt, setGeneratePrompt] = useState('');
   const [framePrompt, setFramePrompt] = useState('');
   const [refPrompt, setRefPrompt] = useState('');
+  const [creatorBrief, setCreatorBrief] = useState('');
+  const [creatorHeadline, setCreatorHeadline] = useState('');
+  const [creatorCta, setCreatorCta] = useState('');
   const [generateAudioEnabled, setGenerateAudioEnabled] = useState(true);
   const [frameAudioEnabled, setFrameAudioEnabled] = useState(true);
   const [refAudioEnabled, setRefAudioEnabled] = useState(true);
@@ -524,7 +529,96 @@ const VadeoAdModal: React.FC<Props> = ({
     </div>
   );
 
+  const renderCreatorTab = () => (
+    <div className="flex flex-col">
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <h3 className="text-base font-semibold text-white">Creator</h3>
+          <p className="text-sm leading-relaxed text-zinc-400">
+            Start a guided ad-creation flow inside Vadeo. For now, this prepares the canvas to the aspect ratio you choose so the Creator layer stays separate from your current generation tools.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          <label className="text-xs text-zinc-500">Aspect ratio</label>
+          <select
+            value={aspectRatio}
+            onChange={(e) => setAspectRatio(e.target.value as AspectRatio)}
+            disabled={isGenerating}
+            className={`${inputClass} appearance-none`}
+          >
+            {ASPECT_OPTIONS.map((ratio) => (
+              <option key={ratio} value={ratio} className="bg-[#121214] text-white">
+                {ratio}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-3">
+          <label className="text-xs text-zinc-500">Creative brief</label>
+          <div className="relative">
+            <textarea
+              value={creatorBrief}
+              onChange={(e) => setCreatorBrief(e.target.value)}
+              onKeyDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              autoFocus={activeTab === 'creator'}
+              disabled={isGenerating}
+              placeholder='Example: Create a premium 16:9 product ad with a strong hook, clean brand overlays, a benefits scene, and a CTA end card.'
+              className={`${inputClass} h-[88px] resize-y overflow-auto pr-6 pb-4 pointer-events-auto`}
+            />
+            <div className="pointer-events-none absolute bottom-3 right-1 flex flex-col gap-[2px] opacity-95">
+              <span className="h-[2px] w-2 rotate-[-45deg] bg-white" />
+              <span className="h-[2px] w-3 rotate-[-45deg] bg-white" />
+              <span className="h-[2px] w-4 rotate-[-45deg] bg-white" />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-3">
+            <label className="text-xs text-zinc-500">Headline</label>
+            <input
+              value={creatorHeadline}
+              onChange={(e) => setCreatorHeadline(e.target.value)}
+              disabled={isGenerating}
+              placeholder="Create Video Ads"
+              className={inputClass}
+            />
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-xs text-zinc-500">CTA</label>
+            <input
+              value={creatorCta}
+              onChange={(e) => setCreatorCta(e.target.value)}
+              disabled={isGenerating}
+              placeholder="Start Free Trial"
+              className={inputClass}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="sticky bottom-0 z-10 flex justify-end bg-black pt-3 pb-1">
+        <button
+          onClick={handleSubmit}
+          disabled={isGenerating}
+          className="h-14 rounded-full px-6 flex items-center justify-center transition-all active:scale-[0.98] bg-white text-black hover:bg-zinc-200 disabled:opacity-50 disabled:hover:bg-white text-sm font-semibold"
+        >
+          Start Creator
+        </button>
+      </div>
+    </div>
+  );
+
   const handleSubmit = () => {
+    if (activeTab === 'creator') {
+      onStartCreator(aspectRatio, creatorBrief, creatorHeadline, creatorCta);
+      return;
+    }
+
     if (activeTab === 'generate') {
       onGenerateText(generatePrompt, aspectRatio, generateAudioEnabled, generateAudioType, generateImageFile);
       return;
@@ -567,6 +661,7 @@ const VadeoAdModal: React.FC<Props> = ({
             <button onClick={() => setActiveTab('generate')} className={tabButtonClass('generate')}>Generate</button>
             <button onClick={() => setActiveTab('frame-video')} className={tabButtonClass('frame-video')}>Frames to Video</button>
             <button onClick={() => setActiveTab('ref-video')} className={tabButtonClass('ref-video')}>Ref-Video</button>
+            <button onClick={() => setActiveTab('creator')} className={tabButtonClass('creator')}>Creator</button>
           </div>
         </div>
 
@@ -574,6 +669,7 @@ const VadeoAdModal: React.FC<Props> = ({
           {activeTab === 'generate' && renderGenerateTab()}
           {activeTab === 'frame-video' && renderFrameVideoTab()}
           {activeTab === 'ref-video' && renderRefVideoTab()}
+          {activeTab === 'creator' && renderCreatorTab()}
         </div>
       </div>
     </div>

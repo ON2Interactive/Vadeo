@@ -123,6 +123,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [settingsBusyAction, setSettingsBusyAction] = useState<string | null>(null);
   const [settingsError, setSettingsError] = useState<string | null>(null);
+  const [creatorNotice, setCreatorNotice] = useState<string | null>(null);
   const [isNewProject, setIsNewProject] = useState(true);
   const [remainingGenerations, setRemainingGenerations] = useState<number>(0);
   const [usedGenerations, setUsedGenerations] = useState<number>(0);
@@ -1582,6 +1583,23 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
     }
   };
 
+  const handleStartCreator = (aspectRatio: AspectRatio, brief: string, headline: string, cta: string) => {
+    syncCanvasToAspectRatio(aspectRatio);
+    setShowVadeoAdModal(false);
+
+    const summaryParts = [
+      `Creator workspace prepared for ${aspectRatio}.`,
+      brief ? 'Brief captured.' : null,
+      headline ? `Headline: ${headline}.` : null,
+      cta ? `CTA: ${cta}.` : null,
+    ].filter(Boolean);
+
+    setCreatorNotice(summaryParts.join(' '));
+    window.setTimeout(() => {
+      setCreatorNotice(null);
+    }, 4000);
+  };
+
   /* --- EXPORT LOGIC --- */
 
 
@@ -1811,6 +1829,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
           onGenerateText={handleGenerateTextVideo}
           onGenerateFrameVideo={handleGenerateFrameVideo}
           onGenerateRefVideo={handleGenerateReferenceVideo}
+          onStartCreator={handleStartCreator}
           isGenerating={isGenerating}
           initialAspectRatio={activePage.aspectRatio}
         />
@@ -1983,6 +2002,12 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
           )}
         </div>
       </div>
+
+      {creatorNotice && (
+        <div className="fixed top-20 left-1/2 z-[180] -translate-x-1/2 rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-xs font-semibold text-blue-100 shadow-[0_0_20px_rgba(37,99,235,0.2)] backdrop-blur">
+          {creatorNotice}
+        </div>
+      )}
 
       {isDragActive && (
         <div className="absolute inset-x-0 top-[130px] bottom-0 z-[90] bg-blue-500/10 backdrop-blur-[2px] border-2 border-dashed border-blue-400 flex items-center justify-center pointer-events-none">

@@ -3,6 +3,7 @@ import { Loader2, Upload, X } from 'lucide-react';
 import { AspectRatio } from '../../types';
 
 export type MotionAnimationPreset =
+  | 'random-mix'
   | 'fade'
   | 'crossfade'
   | 'slide-up'
@@ -20,6 +21,7 @@ interface Props {
 const ASPECT_OPTIONS: AspectRatio[] = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9'];
 const DURATION_OPTIONS = [5, 10, 15, 30, 45, 60] as const;
 const ANIMATION_OPTIONS: Array<{ value: MotionAnimationPreset; label: string }> = [
+  { value: 'random-mix', label: 'Random Mix' },
   { value: 'fade', label: 'Fade' },
   { value: 'crossfade', label: 'Crossfade' },
   { value: 'slide-up', label: 'Slide Up' },
@@ -43,7 +45,7 @@ const MotionModal: React.FC<Props> = ({
     ASPECT_OPTIONS.includes(initialAspectRatio) ? initialAspectRatio : '16:9'
   );
   const [duration, setDuration] = useState<number>(30);
-  const [animation, setAnimation] = useState<MotionAnimationPreset>('crossfade');
+  const [animation, setAnimation] = useState<MotionAnimationPreset>('random-mix');
   const [timingPrompt, setTimingPrompt] = useState('Transition each asset in 3s');
   const [brief, setBrief] = useState('');
   const [headline, setHeadline] = useState('');

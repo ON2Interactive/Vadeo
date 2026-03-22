@@ -19,6 +19,7 @@ interface Props {
 const ASPECT_OPTIONS: AspectRatio[] = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9'];
 const CREATOR_DURATION_OPTIONS = [5, 10, 15, 30, 45, 60] as const;
 const CREATOR_ANIMATION_OPTIONS: Array<{ value: MotionAnimationPreset; label: string }> = [
+  { value: 'random-mix', label: 'Random Mix' },
   { value: 'fade', label: 'Fade' },
   { value: 'crossfade', label: 'Crossfade' },
   { value: 'slide-up', label: 'Slide Up' },
@@ -60,7 +61,7 @@ const VadeoAdModal: React.FC<Props> = ({
   const [refPrompt, setRefPrompt] = useState('');
   const [creatorWebsiteUrl, setCreatorWebsiteUrl] = useState('');
   const [creatorDuration, setCreatorDuration] = useState<number>(15);
-  const [creatorAnimation, setCreatorAnimation] = useState<MotionAnimationPreset>('crossfade');
+  const [creatorAnimation, setCreatorAnimation] = useState<MotionAnimationPreset>('random-mix');
   const [creatorBrief, setCreatorBrief] = useState('');
   const [creatorHeadline, setCreatorHeadline] = useState('');
   const [creatorCta, setCreatorCta] = useState('');

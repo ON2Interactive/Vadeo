@@ -1719,6 +1719,23 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
       const totalDurationMs = Math.max(duration * 1000, computedDurationMs);
       const transitionMs = Math.min(1000, Math.max(400, requestedStepMs * 0.3));
 
+      const resolveAnimationPreset = (assetIndex: number): Exclude<MotionAnimationPreset, 'random-mix'> => {
+        if (animation !== 'random-mix') {
+          return animation;
+        }
+
+        const curatedMix: Array<Exclude<MotionAnimationPreset, 'random-mix'>> = [
+          'ken-burns',
+          'crossfade',
+          'slide-left',
+          'zoom-in',
+          'fade',
+          'slide-up',
+        ];
+
+        return curatedMix[assetIndex % curatedMix.length];
+      };
+
       const getMotionKeyframes = (
         index: number,
         startMs: number,
@@ -1729,6 +1746,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
         fadeOutEnd: number,
         basePlacement: { x: number; y: number; width: number; height: number }
       ) => {
+        const resolvedAnimation = resolveAnimationPreset(index);
         const isFirst = index === 0;
         const isLast = index === assets.length - 1;
         const defaultFrames = [
@@ -1740,11 +1758,11 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
           { time: totalDurationMs, opacity: isLast ? 1 : 0 }
         ];
 
-        if (animation === 'fade' || animation === 'crossfade') {
+        if (resolvedAnimation === 'fade' || resolvedAnimation === 'crossfade') {
           return defaultFrames;
         }
 
-        if (animation === 'slide-up') {
+        if (resolvedAnimation === 'slide-up') {
           return [
             { time: 0, opacity: isFirst ? 1 : 0, y: basePlacement.y + (isFirst ? 0 : 60) },
             { time: fadeInStart, opacity: isFirst ? 1 : 0, y: basePlacement.y + (isFirst ? 0 : 60) },
@@ -1755,7 +1773,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
           ];
         }
 
-        if (animation === 'slide-left') {
+        if (resolvedAnimation === 'slide-left') {
           return [
             { time: 0, opacity: isFirst ? 1 : 0, x: basePlacement.x + (isFirst ? 0 : 80) },
             { time: fadeInStart, opacity: isFirst ? 1 : 0, x: basePlacement.x + (isFirst ? 0 : 80) },
@@ -1766,7 +1784,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
           ];
         }
 
-        if (animation === 'zoom-in') {
+        if (resolvedAnimation === 'zoom-in') {
           const startScale = 1.08;
           const startWidth = basePlacement.width * startScale;
           const startHeight = basePlacement.height * startScale;
@@ -1787,7 +1805,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
           ];
         }
 
-        if (animation === 'ken-burns') {
+        if (resolvedAnimation === 'ken-burns') {
           const startScale = 1.08;
           const endScale = 1.18;
           const startWidth = basePlacement.width * startScale;
@@ -1969,7 +1987,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
       const summaryParts = [
         `Motion draft created in ${aspectRatio}.`,
         `${files.length} asset${files.length > 1 ? 's' : ''} sequenced in one scene.`,
-        `Animation: ${animation.replace('-', ' ')}.`,
+        animation === 'random-mix' ? 'Animation: random mix.' : `Animation: ${animation.replace('-', ' ')}.`,
         timingPrompt.trim() ? `Timing: ${timingPrompt.trim()}.` : `${duration}s selected.`,
       ];
 

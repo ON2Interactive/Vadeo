@@ -1642,7 +1642,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
 
     try {
       const assets = await Promise.all(files.map(readImageAsset));
-      const sceneDurationMs = duration * 1000;
+      const totalDurationMs = duration * 1000;
       const primaryHeadline = headline.trim() || 'Create Video Ads';
       const primaryCta = cta.trim() || 'Start Free Trial';
       const briefLine = brief.trim();
@@ -1659,151 +1659,160 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
         };
       };
 
-      const imagePages: Page[] = assets.map((asset, index) => {
+      const segmentDurationMs = totalDurationMs / assets.length;
+      const transitionMs = Math.min(1000, Math.max(400, segmentDurationMs * 0.3));
+
+      const imageLayers: Layer[] = assets.map((asset, index) => {
         const placement = buildCoverPlacement(asset.width, asset.height);
         const imageLayerId = uuidv4();
-        const overlayId = uuidv4();
-        const titleId = uuidv4();
-        const detailId = uuidv4();
-        const ctaPillId = uuidv4();
-        const ctaTextId = uuidv4();
-        const isFirstScene = index === 0;
-        const isLastImageScene = index === assets.length - 1;
-
-        const layers: Layer[] = [
-          {
-            id: imageLayerId,
-            name: `Scene ${index + 1} Image`,
-            type: LayerType.IMAGE,
-            x: placement.x,
-            y: placement.y,
-            width: placement.width,
-            height: placement.height,
-            rotation: 0,
-            opacity: 1,
-            src: asset.src,
-            mediaType: 'image',
-            visible: true,
-            locked: false,
-          } as ImageLayer,
-          {
-            id: overlayId,
-            name: `Scene ${index + 1} Overlay`,
-            type: LayerType.RECT,
-            x: 0,
-            y: targetDims.h * 0.58,
-            width: targetDims.w,
-            height: targetDims.h * 0.42,
-            rotation: 0,
-            opacity: 0.72,
-            fill: '#050505',
-            stroke: '#050505',
-            strokeWidth: 0,
-            cornerRadius: 0,
-            visible: true,
-            locked: false,
-          } as ShapeLayer,
-          {
-            id: titleId,
-            name: `Scene ${index + 1} Title`,
-            type: LayerType.TEXT,
-            x: targetDims.w * 0.08,
-            y: targetDims.h * 0.65,
-            width: targetDims.w * 0.7,
-            height: 160,
-            rotation: 0,
-            opacity: 1,
-            text: isFirstScene ? primaryHeadline : `Scene ${index + 1}`,
-            fontSize: Math.max(42, Math.round(targetDims.w * 0.04)),
-            fontFamily: 'Helvetica',
-            fontWeight: 'bold',
-            fill: '#ffffff',
-            align: 'left',
-            letterSpacing: 0,
-            lineHeight: 1.05,
-            visible: true,
-            locked: false,
-          } as TextLayer,
-        ];
-
-        if (briefLine) {
-          layers.push({
-            id: detailId,
-            name: `Scene ${index + 1} Detail`,
-            type: LayerType.TEXT,
-            x: targetDims.w * 0.08,
-            y: targetDims.h * 0.77,
-            width: targetDims.w * 0.64,
-            height: 120,
-            rotation: 0,
-            opacity: 0.95,
-            text: isFirstScene ? briefLine : `Structured for ${duration}s delivery across ${aspectRatio}.`,
-            fontSize: Math.max(18, Math.round(targetDims.w * 0.013)),
-            fontFamily: 'Helvetica',
-            fontWeight: 'normal',
-            fill: '#d4d4d8',
-            align: 'left',
-            letterSpacing: 0,
-            lineHeight: 1.35,
-            visible: true,
-            locked: false,
-          } as TextLayer);
-        }
-
-        if (isLastImageScene) {
-          layers.push(
-            {
-              id: ctaPillId,
-              name: 'CTA Pill',
-              type: LayerType.RECT,
-              x: targetDims.w * 0.08,
-              y: targetDims.h * 0.885,
-              width: Math.max(240, targetDims.w * 0.22),
-              height: Math.max(60, targetDims.h * 0.065),
-              rotation: 0,
-              opacity: 1,
-              fill: '#ffffff',
-              stroke: '#ffffff',
-              strokeWidth: 0,
-              cornerRadius: Math.max(30, targetDims.h * 0.03),
-              visible: true,
-              locked: false,
-            } as ShapeLayer,
-            {
-              id: ctaTextId,
-              name: 'CTA Text',
-              type: LayerType.TEXT,
-              x: targetDims.w * 0.08,
-              y: targetDims.h * 0.898,
-              width: Math.max(240, targetDims.w * 0.22),
-              height: 50,
-              rotation: 0,
-              opacity: 1,
-              text: primaryCta,
-              fontSize: Math.max(18, Math.round(targetDims.w * 0.013)),
-              fontFamily: 'Helvetica',
-              fontWeight: 'bold',
-              fill: '#050505',
-              align: 'center',
-              letterSpacing: 0,
-              lineHeight: 1.2,
-              visible: true,
-              locked: false,
-            } as TextLayer
-          );
-        }
+        const startMs = index * segmentDurationMs;
+        const endMs = (index + 1) * segmentDurationMs;
+        const fadeInStart = index === 0 ? 0 : Math.max(0, startMs - transitionMs / 2);
+        const fadeInEnd = index === 0 ? 0 : startMs + transitionMs / 2;
+        const fadeOutStart = index === assets.length - 1 ? totalDurationMs : Math.max(startMs, endMs - transitionMs / 2);
+        const fadeOutEnd = index === assets.length - 1 ? totalDurationMs : Math.min(totalDurationMs, endMs + transitionMs / 2);
 
         return {
-          id: uuidv4(),
-          name: `Scene ${index + 1}`,
-          aspectRatio,
-          width: targetDims.w,
-          height: targetDims.h,
-          backgroundColor: '#050505',
-          layers,
-        };
+          id: imageLayerId,
+          name: `Motion Image ${index + 1}`,
+          type: LayerType.IMAGE,
+          x: placement.x,
+          y: placement.y,
+          width: placement.width,
+          height: placement.height,
+          rotation: 0,
+          opacity: index === 0 ? 1 : 0,
+          src: asset.src,
+          mediaType: 'image',
+          visible: true,
+          locked: false,
+          keyframes: [
+            { time: 0, opacity: index === 0 ? 1 : 0 },
+            { time: fadeInStart, opacity: index === 0 ? 1 : 0 },
+            { time: fadeInEnd, opacity: 1 },
+            { time: fadeOutStart, opacity: 1 },
+            { time: fadeOutEnd, opacity: index === assets.length - 1 ? 1 : 0 },
+            { time: totalDurationMs, opacity: index === assets.length - 1 ? 1 : 0 }
+          ]
+        } as ImageLayer;
       });
-      const pages = imagePages;
+
+      const motionLayers: Layer[] = [
+        ...imageLayers,
+        {
+          id: uuidv4(),
+          name: 'Motion Overlay',
+          type: LayerType.RECT,
+          x: 0,
+          y: targetDims.h * 0.58,
+          width: targetDims.w,
+          height: targetDims.h * 0.42,
+          rotation: 0,
+          opacity: 0.72,
+          fill: '#050505',
+          stroke: '#050505',
+          strokeWidth: 0,
+          cornerRadius: 0,
+          visible: true,
+          locked: false,
+        } as ShapeLayer,
+        {
+          id: uuidv4(),
+          name: 'Motion Title',
+          type: LayerType.TEXT,
+          x: targetDims.w * 0.08,
+          y: targetDims.h * 0.65,
+          width: targetDims.w * 0.7,
+          height: 160,
+          rotation: 0,
+          opacity: 1,
+          text: primaryHeadline,
+          fontSize: Math.max(42, Math.round(targetDims.w * 0.04)),
+          fontFamily: 'Helvetica',
+          fontWeight: 'bold',
+          fill: '#ffffff',
+          align: 'left',
+          letterSpacing: 0,
+          lineHeight: 1.05,
+          visible: true,
+          locked: false,
+        } as TextLayer,
+      ];
+
+      if (briefLine) {
+        motionLayers.push({
+          id: uuidv4(),
+          name: 'Motion Detail',
+          type: LayerType.TEXT,
+          x: targetDims.w * 0.08,
+          y: targetDims.h * 0.77,
+          width: targetDims.w * 0.64,
+          height: 120,
+          rotation: 0,
+          opacity: 0.95,
+          text: briefLine,
+          fontSize: Math.max(18, Math.round(targetDims.w * 0.013)),
+          fontFamily: 'Helvetica',
+          fontWeight: 'normal',
+          fill: '#d4d4d8',
+          align: 'left',
+          letterSpacing: 0,
+          lineHeight: 1.35,
+          visible: true,
+          locked: false,
+        } as TextLayer);
+      }
+
+      motionLayers.push(
+        {
+          id: uuidv4(),
+          name: 'CTA Pill',
+          type: LayerType.RECT,
+          x: targetDims.w * 0.08,
+          y: targetDims.h * 0.885,
+          width: Math.max(240, targetDims.w * 0.22),
+          height: Math.max(60, targetDims.h * 0.065),
+          rotation: 0,
+          opacity: 1,
+          fill: '#ffffff',
+          stroke: '#ffffff',
+          strokeWidth: 0,
+          cornerRadius: Math.max(30, targetDims.h * 0.03),
+          visible: true,
+          locked: false,
+        } as ShapeLayer,
+        {
+          id: uuidv4(),
+          name: 'CTA Text',
+          type: LayerType.TEXT,
+          x: targetDims.w * 0.08,
+          y: targetDims.h * 0.898,
+          width: Math.max(240, targetDims.w * 0.22),
+          height: 50,
+          rotation: 0,
+          opacity: 1,
+          text: primaryCta,
+          fontSize: Math.max(18, Math.round(targetDims.w * 0.013)),
+          fontFamily: 'Helvetica',
+          fontWeight: 'bold',
+          fill: '#050505',
+          align: 'center',
+          letterSpacing: 0,
+          lineHeight: 1.2,
+          visible: true,
+          locked: false,
+        } as TextLayer
+      );
+
+      const pages: Page[] = [{
+        id: uuidv4(),
+        name: 'Scene 1',
+        aspectRatio,
+        width: targetDims.w,
+        height: targetDims.h,
+        backgroundColor: '#050505',
+        layers: motionLayers,
+      }];
 
       setEditorState(prev => ({
         ...prev,
@@ -1824,7 +1833,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
 
       const summaryParts = [
         `Motion draft created in ${aspectRatio}.`,
-        `${pages.length} scenes ready.`,
+        `${files.length} image${files.length > 1 ? 's' : ''} sequenced.`,
         `${duration}s selected.`,
       ];
 

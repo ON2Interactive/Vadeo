@@ -4,14 +4,14 @@ import { AspectRatio } from '../../types';
 
 interface Props {
   onClose: () => void;
-  onStartMotion: (aspectRatio: AspectRatio, duration: number, brief: string, headline: string, cta: string, files: File[]) => void;
+  onStartMotion: (aspectRatio: AspectRatio, duration: number, timingPrompt: string, brief: string, headline: string, cta: string, files: File[]) => void;
   isGenerating: boolean;
   initialAspectRatio: AspectRatio;
 }
 
 const ASPECT_OPTIONS: AspectRatio[] = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9'];
 const DURATION_OPTIONS = [15, 30, 45, 60] as const;
-const MOTION_UPLOAD_LIMIT = 3;
+const MOTION_UPLOAD_LIMIT = 6;
 const MOTION_UPLOAD_INPUT_ID = 'vadeo-motion-upload';
 
 const inputClass =
@@ -27,6 +27,7 @@ const MotionModal: React.FC<Props> = ({
     ASPECT_OPTIONS.includes(initialAspectRatio) ? initialAspectRatio : '16:9'
   );
   const [duration, setDuration] = useState<number>(30);
+  const [timingPrompt, setTimingPrompt] = useState('Transition each asset in 3s');
   const [brief, setBrief] = useState('');
   const [headline, setHeadline] = useState('');
   const [cta, setCta] = useState('');
@@ -46,10 +47,24 @@ const MotionModal: React.FC<Props> = ({
 
   const handleUpload = (fileList: FileList | null) => {
     const nextFiles = Array.from(fileList || [])
-      .filter((file) => file.type.startsWith('image/'))
-      .slice(0, MOTION_UPLOAD_LIMIT);
+      .filter((file) => file.type.startsWith('image/') || file.type.startsWith('video/'));
 
-    setFiles(nextFiles);
+    setFiles((current) => {
+      const merged = [...current, ...nextFiles];
+      const deduped = merged.filter((file, index, collection) => {
+        return collection.findIndex((candidate) =>
+          candidate.name === file.name &&
+          candidate.size === file.size &&
+          candidate.lastModified === file.lastModified
+        ) === index;
+      });
+
+      return deduped.slice(0, MOTION_UPLOAD_LIMIT);
+    });
+  };
+
+  const handleRemoveFile = (targetFile: File) => {
+    setFiles((current) => current.filter((file) => file !== targetFile));
   };
 
   return (
@@ -74,7 +89,7 @@ const MotionModal: React.FC<Props> = ({
                 <label
                   htmlFor={MOTION_UPLOAD_INPUT_ID}
                   className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-zinc-700 text-zinc-200 transition-colors hover:border-white hover:text-white"
-                  title="Upload 1 to 3 reference images"
+                  title="Upload up to 6 images or videos"
                 >
                   <Upload size={16} />
                 </label>
@@ -82,7 +97,7 @@ const MotionModal: React.FC<Props> = ({
                   ref={uploadInputRef}
                   id={MOTION_UPLOAD_INPUT_ID}
                   type="file"
-                  accept="image/*"
+                  accept="image/*,video/*"
                   multiple
                   disabled={isGenerating}
                   onChange={(e) => handleUpload(e.target.files)}
@@ -94,15 +109,29 @@ const MotionModal: React.FC<Props> = ({
                 <div className="mt-4 flex gap-4">
                   {previews.map((preview, index) => (
                     <div key={`${preview.file.name}-${index}`} className="space-y-2">
-                      <button
-                        type="button"
-                        onDoubleClick={() => uploadInputRef.current?.click()}
-                        className="h-[60px] w-[60px] overflow-hidden rounded-md border border-zinc-800 bg-zinc-900"
-                        title="Double-click to replace images"
-                      >
-                        <img src={preview.url} alt={`Motion upload preview ${index + 1}`} className="w-full h-full object-cover" />
-                      </button>
-                      <p className="text-[11px] text-zinc-400">Image {index + 1}</p>
+                      <div className="relative h-[60px] w-[60px] overflow-hidden rounded-md border border-zinc-800 bg-zinc-900">
+                        {preview.file.type.startsWith('video/') ? (
+                          <video
+                            src={preview.url}
+                            muted
+                            playsInline
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <img src={preview.url} alt={`Motion upload preview ${index + 1}`} className="w-full h-full object-cover" />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFile(preview.file)}
+                          className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/75 text-white transition-colors hover:bg-black"
+                          title="Remove asset"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-zinc-400">
+                        {preview.file.type.startsWith('video/') ? `Video ${index + 1}` : `Image ${index + 1}`}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -145,6 +174,17 @@ const MotionModal: React.FC<Props> = ({
           </div>
 
           <div className="space-y-3">
+            <label className="text-xs text-zinc-500">Timing direction</label>
+            <input
+              value={timingPrompt}
+              onChange={(e) => setTimingPrompt(e.target.value)}
+              disabled={isGenerating}
+              placeholder="Transition each asset in 3s"
+              className={inputClass}
+            />
+          </div>
+
+          <div className="space-y-3">
             <label className="text-xs text-zinc-500">Creative brief</label>
             <textarea
               value={brief}
@@ -184,7 +224,7 @@ const MotionModal: React.FC<Props> = ({
 
         <div className="mt-8 flex justify-end">
           <button
-            onClick={() => onStartMotion(aspectRatio, duration, brief, headline, cta, files)}
+            onClick={() => onStartMotion(aspectRatio, duration, timingPrompt, brief, headline, cta, files)}
             disabled={isGenerating || files.length === 0}
             className="h-14 rounded-full px-6 flex items-center justify-center transition-all active:scale-[0.98] bg-white text-black hover:bg-zinc-200 disabled:opacity-50 disabled:hover:bg-white text-sm font-semibold"
           >

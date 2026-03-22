@@ -1604,9 +1604,9 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
     }, 4000);
   };
 
-  const handleStartMotion = async (aspectRatio: AspectRatio, duration: number, brief: string, headline: string, cta: string, files: File[]) => {
+  const handleStartMotion = async (aspectRatio: AspectRatio, duration: number, timingPrompt: string, brief: string, headline: string, cta: string, files: File[]) => {
     if (files.length === 0) {
-      alert('Upload at least one image to start Motion.');
+      alert('Upload at least one image or video to start Motion.');
       return;
     }
 
@@ -1616,36 +1616,68 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
       return;
     }
 
-    const readImageAsset = (file: File) => new Promise<{ src: string; width: number; height: number }>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const src = typeof reader.result === 'string' ? reader.result : '';
-        if (!src) {
-          reject(new Error('Failed to read uploaded image.'));
-          return;
-        }
+    const readMotionAsset = (file: File) => new Promise<{
+      src: string;
+      width: number;
+      height: number;
+      mediaType: 'image' | 'video';
+      durationSec?: number;
+    }>((resolve, reject) => {
+      const src = URL.createObjectURL(file);
 
-        const image = new Image();
-        image.onload = () => {
+      if (file.type.startsWith('video/')) {
+        const video = document.createElement('video');
+        video.preload = 'metadata';
+        video.onloadedmetadata = () => {
           resolve({
             src,
-            width: image.naturalWidth || targetDims.w,
-            height: image.naturalHeight || targetDims.h,
+            width: video.videoWidth || targetDims.w,
+            height: video.videoHeight || targetDims.h,
+            mediaType: 'video',
+            durationSec: video.duration || undefined,
           });
         };
-        image.onerror = () => reject(new Error('Failed to load uploaded image.'));
-        image.src = src;
+        video.onerror = () => reject(new Error('Failed to load uploaded video.'));
+        video.src = src;
+        return;
+      }
+
+      const image = new Image();
+      image.onload = () => {
+        resolve({
+          src,
+          width: image.naturalWidth || targetDims.w,
+          height: image.naturalHeight || targetDims.h,
+          mediaType: 'image',
+        });
       };
-      reader.onerror = () => reject(new Error('Failed to read uploaded image.'));
-      reader.readAsDataURL(file);
+      image.onerror = () => reject(new Error('Failed to load uploaded image.'));
+      image.src = src;
     });
 
+    const parseTimingPromptMs = (input: string) => {
+      const normalized = input.trim().toLowerCase();
+      if (!normalized) return null;
+
+      const valueMatch = normalized.match(/(\d+(?:\.\d+)?)/);
+      if (!valueMatch) return null;
+
+      const value = Number(valueMatch[1]);
+      if (!Number.isFinite(value) || value <= 0) return null;
+
+      if (normalized.includes('ms') || normalized.includes('millisecond')) {
+        return Math.round(value);
+      }
+
+      return Math.round(value * 1000);
+    };
+
     try {
-      const assets = await Promise.all(files.map(readImageAsset));
-      const totalDurationMs = duration * 1000;
+      const assets = await Promise.all(files.map(readMotionAsset));
       const primaryHeadline = headline.trim() || 'Create Video Ads';
       const primaryCta = cta.trim() || 'Start Free Trial';
       const briefLine = brief.trim();
+      const requestedStepMs = parseTimingPromptMs(timingPrompt) || 3000;
 
       const buildCoverPlacement = (assetWidth: number, assetHeight: number) => {
         const scale = Math.max(targetDims.w / assetWidth, targetDims.h / assetHeight);
@@ -1659,22 +1691,32 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
         };
       };
 
-      const segmentDurationMs = totalDurationMs / assets.length;
-      const transitionMs = Math.min(1000, Math.max(400, segmentDurationMs * 0.3));
+      const assetSegmentDurationsMs = assets.map((asset) => {
+        if (asset.mediaType === 'video' && asset.durationSec && asset.durationSec > 0) {
+          return Math.max(requestedStepMs, Math.round(asset.durationSec * 1000));
+        }
+        return requestedStepMs;
+      });
+      const computedDurationMs = assetSegmentDurationsMs.reduce((sum, segmentMs) => sum + segmentMs, 0);
+      const totalDurationMs = Math.max(duration * 1000, computedDurationMs);
+      const transitionMs = Math.min(1000, Math.max(400, requestedStepMs * 0.3));
 
-      const imageLayers: Layer[] = assets.map((asset, index) => {
+      let segmentCursorMs = 0;
+      const mediaLayers: Layer[] = assets.map((asset, index) => {
         const placement = buildCoverPlacement(asset.width, asset.height);
-        const imageLayerId = uuidv4();
-        const startMs = index * segmentDurationMs;
-        const endMs = (index + 1) * segmentDurationMs;
+        const layerId = uuidv4();
+        const segmentDurationMs = assetSegmentDurationsMs[index];
+        const startMs = segmentCursorMs;
+        const endMs = segmentCursorMs + segmentDurationMs;
         const fadeInStart = index === 0 ? 0 : Math.max(0, startMs - transitionMs / 2);
         const fadeInEnd = index === 0 ? 0 : startMs + transitionMs / 2;
         const fadeOutStart = index === assets.length - 1 ? totalDurationMs : Math.max(startMs, endMs - transitionMs / 2);
         const fadeOutEnd = index === assets.length - 1 ? totalDurationMs : Math.min(totalDurationMs, endMs + transitionMs / 2);
+        segmentCursorMs = endMs;
 
         return {
-          id: imageLayerId,
-          name: `Motion Image ${index + 1}`,
+          id: layerId,
+          name: `Motion Asset ${index + 1}`,
           type: LayerType.IMAGE,
           x: placement.x,
           y: placement.y,
@@ -1683,7 +1725,12 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
           rotation: 0,
           opacity: index === 0 ? 1 : 0,
           src: asset.src,
-          mediaType: 'image',
+          mediaType: asset.mediaType,
+          playing: asset.mediaType === 'video',
+          loop: false,
+          volume: asset.mediaType === 'video' ? 1 : undefined,
+          currentTime: asset.mediaType === 'video' ? 0 : undefined,
+          duration: asset.mediaType === 'video' ? (asset.durationSec || segmentDurationMs / 1000) : undefined,
           visible: true,
           locked: false,
           keyframes: [
@@ -1698,7 +1745,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
       });
 
       const motionLayers: Layer[] = [
-        ...imageLayers,
+        ...mediaLayers,
         {
           id: uuidv4(),
           name: 'Motion Overlay',
@@ -1766,38 +1813,21 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
       motionLayers.push(
         {
           id: uuidv4(),
-          name: 'CTA Pill',
-          type: LayerType.RECT,
-          x: targetDims.w * 0.08,
-          y: targetDims.h * 0.885,
-          width: Math.max(240, targetDims.w * 0.22),
-          height: Math.max(60, targetDims.h * 0.065),
-          rotation: 0,
-          opacity: 1,
-          fill: '#ffffff',
-          stroke: '#ffffff',
-          strokeWidth: 0,
-          cornerRadius: Math.max(30, targetDims.h * 0.03),
-          visible: true,
-          locked: false,
-        } as ShapeLayer,
-        {
-          id: uuidv4(),
-          name: 'CTA Text',
+          name: 'Motion CTA',
           type: LayerType.TEXT,
           x: targetDims.w * 0.08,
-          y: targetDims.h * 0.898,
-          width: Math.max(240, targetDims.w * 0.22),
+          y: targetDims.h * 0.905,
+          width: targetDims.w * 0.55,
           height: 50,
           rotation: 0,
           opacity: 1,
           text: primaryCta,
-          fontSize: Math.max(18, Math.round(targetDims.w * 0.013)),
+          fontSize: Math.max(18, Math.round(targetDims.w * 0.014)),
           fontFamily: 'Helvetica',
           fontWeight: 'bold',
-          fill: '#050505',
-          align: 'center',
-          letterSpacing: 0,
+          fill: '#ffffff',
+          align: 'left',
+          letterSpacing: 0.5,
           lineHeight: 1.2,
           visible: true,
           locked: false,
@@ -1833,8 +1863,8 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
 
       const summaryParts = [
         `Motion draft created in ${aspectRatio}.`,
-        `${files.length} image${files.length > 1 ? 's' : ''} sequenced.`,
-        `${duration}s selected.`,
+        `${files.length} asset${files.length > 1 ? 's' : ''} sequenced in one scene.`,
+        timingPrompt.trim() ? `Timing: ${timingPrompt.trim()}.` : `${duration}s selected.`,
       ];
 
       setCreatorNotice(summaryParts.join(' '));
@@ -2392,6 +2422,8 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
             }
             return layer;
           })()}
+          isPlaying={editorState.isPlaying}
+          onTogglePlay={handleTogglePlay}
           onUpdateLayer={updateLayer}
           onDuplicateLayer={duplicateLayer}
           onDeleteLayer={deleteLayer}

@@ -16,6 +16,8 @@ interface Props {
   pages: Page[];
   activePageId: string;
   selectedLayer: Layer | null;
+  isPlaying?: boolean;
+  onTogglePlay?: () => void;
   onUpdateLayer: (id: string, attrs: Partial<Layer>) => void;
   onDuplicateLayer: (id: string) => void;
   onUpdatePage: (attrs: Partial<Page>) => void;
@@ -304,7 +306,7 @@ const FontSizeInput = ({ value, onChange }: { value: number, onChange: (v: numbe
 };
 
 const PropertiesPanel: React.FC<Props> = ({
-  pages, activePageId, selectedLayer, onUpdateLayer, onDuplicateLayer, onDeleteLayer,
+  pages, activePageId, selectedLayer, isPlaying, onTogglePlay, onUpdateLayer, onDuplicateLayer, onDeleteLayer,
   onUpdatePage, onSelectLayer, onReorderLayers, onPageAction, onGenerateVideo,
   onMask, onUnmask, selectedLayerIds, onAddKeyframe
 }) => {
@@ -542,6 +544,29 @@ const PropertiesPanel: React.FC<Props> = ({
           </>
         ) : (
           <div className="space-y-8 animate-in fade-in duration-500">
+            <section>
+              <div className="flex items-center gap-2 mb-4">
+                <Play size={14} className="text-blue-500" />
+                <h3 className="text-xs font-bold text-zinc-200 tracking-wider">Motion Preview</h3>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={onTogglePlay}
+                  className={`flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-xs font-bold transition-all active:scale-95 ${
+                    isPlaying
+                      ? 'bg-zinc-800 text-zinc-200 border border-zinc-700 hover:border-zinc-500'
+                      : 'bg-blue-600 text-white hover:bg-blue-500'
+                  }`}
+                >
+                  {isPlaying ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
+                  {isPlaying ? 'Pause' : 'Play'}
+                </button>
+                <span className="text-[11px] text-zinc-500">
+                  Preview the Motion sequence without using the timeline controls.
+                </span>
+              </div>
+            </section>
+
             <section>
               <div className="flex items-center gap-2 mb-4">
                 <Layout size={14} className="text-blue-500" />

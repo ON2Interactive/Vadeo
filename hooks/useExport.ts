@@ -10,6 +10,7 @@ interface UseExportProps {
     projectName: string;
     playheadTime: number;
     isPlaying: boolean;
+    onExportComplete?: (config: ExportConfig) => void;
     selectedLayerId: string | null;
     selectedLayerIds: string[];
     selectedKeyframe: { layerId: string, time: number } | null;
@@ -25,6 +26,7 @@ export const useExport = ({
     projectName,
     playheadTime,
     isPlaying,
+    onExportComplete,
     selectedLayerId,
     selectedLayerIds,
     selectedKeyframe,
@@ -275,6 +277,7 @@ export const useExport = ({
                                 await writable.write(blob);
                                 await writable.close();
                                 console.log('✅ PNG saved via File System Access API');
+                                onExportComplete?.(config);
                                 setIsExporting(false);
                                 return;
                             } catch (err) {
@@ -310,6 +313,7 @@ export const useExport = ({
                         }, 60000);
 
                         setIsExporting(false);
+                        onExportComplete?.(config);
                         console.log('✅ PNG export complete');
                     }
                 });
@@ -349,6 +353,7 @@ export const useExport = ({
                         setDownloadReadyFilename(`${baseFilename}.pdf`);
                         setStatusText("Your PDF is Ready!");
                         setIsExporting(false);
+                        onExportComplete?.(config);
 
                         // Auto-download for PDF as well to be consistent
                         const link = document.createElement('a');
@@ -451,6 +456,7 @@ export const useExport = ({
                         console.log('✅ Video saved via File System Access API');
                         setIsExporting(false);
                         setStatusText("");
+                        onExportComplete?.(config);
                         return;
                     } catch (err) {
                         console.error('Failed to write video to file handle:', err);
@@ -489,6 +495,7 @@ export const useExport = ({
 
                 setIsExporting(false);
                 setStatusText("");
+                onExportComplete?.(config);
             };
 
             setStatusText("Recording Scene...");

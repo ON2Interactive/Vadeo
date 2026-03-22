@@ -83,9 +83,22 @@ const VADEO_MAX_AD_IMAGES = 3;
 const GENERATED_AUDIO_FADE_MS = 1000;
 const DEFAULT_TIMELINE_DURATION_MS = 5000;
 const VEO_GENERATED_DURATION_SEC = 8;
+const TRIAL_MOTION_DOWNLOAD_LIMIT = 2;
 
 type PickerCapableInput = HTMLInputElement & {
   showPicker?: () => void;
+};
+
+const getTrialMotionDownloadCount = (userId: string | null) => {
+  if (!userId || typeof window === 'undefined') return 0;
+  const raw = window.localStorage.getItem(`vadeo_trial_motion_downloads:${userId}`);
+  const parsed = Number(raw || '0');
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+};
+
+const setTrialMotionDownloadCount = (userId: string | null, count: number) => {
+  if (!userId || typeof window === 'undefined') return;
+  window.localStorage.setItem(`vadeo_trial_motion_downloads:${userId}`, String(Math.max(0, count)));
 };
 
 const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState }) => {
@@ -129,9 +142,12 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
   const [isNewProject, setIsNewProject] = useState(true);
   const [remainingGenerations, setRemainingGenerations] = useState<number>(0);
   const [usedGenerations, setUsedGenerations] = useState<number>(0);
+  const [trialMotionDownloadsUsed, setTrialMotionDownloadsUsed] = useState<number>(0);
   const [accountName, setAccountName] = useState<string>('Vadeo User');
   const isTrialActive = trialState?.status === 'active';
   const isTrialExpired = trialState?.status === 'expired';
+  const hasTrialEditorAccess = currentPlan === 'none' && (isTrialActive || isTrialExpired);
+  const remainingTrialMotionDownloads = Math.max(0, TRIAL_MOTION_DOWNLOAD_LIMIT - trialMotionDownloadsUsed);
 
   const handleBackClick = () => {
     if (onBackToDashboard) onBackToDashboard();
@@ -172,6 +188,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
         localStorage.setItem('vadeo_last_user_id', user.id);
         setIsAdminUser(Boolean(user.is_admin));
         setAccountName(user.full_name || user.email?.split('@')[0] || 'Vadeo User');
+        setTrialMotionDownloadsUsed(getTrialMotionDownloadCount(user.id));
         await dbHelpers.initUserProfile(user.id);
         const accessState = await dbHelpers.getAccessState().catch(() => null);
         if (accessState?.profile) {
@@ -203,6 +220,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
         setCurrentPlan(DEV_BYPASS_CREDITS ? 'premium' : 'none');
         setUsedGenerations(0);
         setRemainingGenerations(0);
+        setTrialMotionDownloadsUsed(0);
       }
     });
   }, []);
@@ -293,6 +311,13 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
   const thumbnailTimeoutRef = useRef<number | null>(null);
 
   const activePage = editorState.pages.find(p => p.id === editorState.activePageId)!;
+  const isMotionProject = activePage.layers.some((layer) => typeof layer.name === 'string' && layer.name.startsWith('Motion '));
+  const isTrialMotionExportLocked =
+    !DEV_BYPASS_CREDITS &&
+    !isAdminUser &&
+    hasTrialEditorAccess &&
+    isMotionProject &&
+    trialMotionDownloadsUsed >= TRIAL_MOTION_DOWNLOAD_LIMIT;
 
   const handleUpgrade = () => {
     applyPlan('premium');
@@ -1895,6 +1920,20 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
     projectName,
     playheadTime: editorState.playheadTime,
     isPlaying: editorState.isPlaying,
+    onExportComplete: (config) => {
+      if (
+        config.format === 'video' &&
+        !DEV_BYPASS_CREDITS &&
+        !isAdminUser &&
+        hasTrialEditorAccess &&
+        isMotionProject &&
+        userId
+      ) {
+        const nextCount = trialMotionDownloadsUsed + 1;
+        setTrialMotionDownloadCount(userId, nextCount);
+        setTrialMotionDownloadsUsed(nextCount);
+      }
+    },
     selectedLayerId: editorState.selectedLayerId,
     selectedLayerIds: editorState.selectedLayerIds,
     selectedKeyframe: editorState.selectedKeyframe,
@@ -1974,6 +2013,12 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
   }, [editorState.selectedLayerId, activePage.layers, updateActivePage, handleUndo, handleRedo, duplicateLayer, projectName, projectId, centerWorkspace, isCanvasEditing]);
 
   const handleConfirmExport = (config: ExportConfig) => {
+    if (isTrialMotionExportLocked) {
+      setSettingsError('Your free trial includes 2 Motion downloads. Subscribe to export more Motion videos.');
+      setShowSettingsModal(true);
+      setShowExportDialog(false);
+      return;
+    }
     setShowExportDialog(false);
     executeExport(config);
   };
@@ -2083,9 +2128,9 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
           isAdminUser
             ? 'Admin access is active. You can enter the editor without a paid plan.'
             : isTrialActive
-              ? 'Your 24-hour free trial is active. Workspace access is enabled, but video generations are not included during trial.'
+              ? `Your 24-hour free trial is active. Workspace access and Motion are enabled, but video generations are not included during trial. ${remainingTrialMotionDownloads} of ${TRIAL_MOTION_DOWNLOAD_LIMIT} Motion downloads remaining.`
               : isTrialExpired
-                ? 'Choose a paid plan to continue inside Vadeo.'
+                ? `Choose a paid plan to continue inside Vadeo. ${remainingTrialMotionDownloads} of ${TRIAL_MOTION_DOWNLOAD_LIMIT} Motion downloads remaining.`
               : currentPlan === 'premium' || currentPlan === 'standard'
                 ? `${usedGenerations} of ${PLAN_GENERATION_LIMIT} generations used. ${remainingGenerations} remaining.`
               : currentPlan === 'starter'
@@ -2282,7 +2327,18 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
           </div>
 
           <button onClick={centerWorkspace} className="p-2 hover:bg-zinc-800 rounded text-zinc-400" title="Fit to Screen (Ctrl+0)"><Maximize2 size={18} /></button>
-          <button onClick={() => setShowExportDialog(true)} disabled={isExporting || isGenerating} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg transition-all active:scale-[0.98]">
+          <button
+            onClick={() => {
+              if (isTrialMotionExportLocked) {
+                setSettingsError('Your free trial includes 2 Motion downloads. Subscribe to export more Motion videos.');
+                setShowSettingsModal(true);
+                return;
+              }
+              setShowExportDialog(true);
+            }}
+            disabled={isExporting || isGenerating}
+            className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg transition-all active:scale-[0.98]"
+          >
             {isExporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
             {isExporting ? 'Exporting...' : 'Export'}
           </button>

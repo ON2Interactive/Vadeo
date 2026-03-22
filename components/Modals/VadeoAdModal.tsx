@@ -10,12 +10,13 @@ interface Props {
   onGenerateText: (prompt: string, aspectRatio: AspectRatio, audioEnabled: boolean, audioType: AudioType, imageFile?: File | null) => void;
   onGenerateFrameVideo: (startFile: File, endFile: File, prompt: string, aspectRatio: AspectRatio, audioEnabled: boolean, audioType: AudioType) => void;
   onGenerateRefVideo: (files: File[], prompt: string, aspectRatio: AspectRatio, audioEnabled: boolean, audioType: AudioType) => void;
-  onStartCreator: (aspectRatio: AspectRatio, websiteUrl: string, brief: string, headline: string, cta: string, files: File[]) => void;
+  onStartCreator: (aspectRatio: AspectRatio, duration: number, websiteUrl: string, brief: string, headline: string, cta: string, files: File[]) => void;
   isGenerating: boolean;
   initialAspectRatio: AspectRatio;
 }
 
 const ASPECT_OPTIONS: AspectRatio[] = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9'];
+const CREATOR_DURATION_OPTIONS = [5, 10, 15, 30, 45, 60] as const;
 const AUDIO_TYPE_OPTIONS: Array<{ value: AudioType; label: string }> = [
   { value: 'auto', label: 'Auto' },
   { value: 'dialogue', label: 'Dialogue' },
@@ -49,6 +50,7 @@ const VadeoAdModal: React.FC<Props> = ({
   const [framePrompt, setFramePrompt] = useState('');
   const [refPrompt, setRefPrompt] = useState('');
   const [creatorWebsiteUrl, setCreatorWebsiteUrl] = useState('');
+  const [creatorDuration, setCreatorDuration] = useState<number>(15);
   const [creatorBrief, setCreatorBrief] = useState('');
   const [creatorHeadline, setCreatorHeadline] = useState('');
   const [creatorCta, setCreatorCta] = useState('');
@@ -257,20 +259,38 @@ const VadeoAdModal: React.FC<Props> = ({
           </div>
         </div>
 
-        <div className="space-y-3">
-          <label className="text-xs text-zinc-500">Aspect ratio</label>
-          <select
-            value={aspectRatio}
-            onChange={(e) => setAspectRatio(e.target.value as AspectRatio)}
-            disabled={isGenerating}
-            className={`${inputClass} appearance-none`}
-          >
-            {ASPECT_OPTIONS.map((ratio) => (
-              <option key={ratio} value={ratio} className="bg-[#121214] text-white">
-                {ratio}
-              </option>
-            ))}
-          </select>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-3">
+            <label className="text-xs text-zinc-500">Aspect ratio</label>
+            <select
+              value={aspectRatio}
+              onChange={(e) => setAspectRatio(e.target.value as AspectRatio)}
+              disabled={isGenerating}
+              className={`${inputClass} appearance-none`}
+            >
+              {ASPECT_OPTIONS.map((ratio) => (
+                <option key={ratio} value={ratio} className="bg-[#121214] text-white">
+                  {ratio}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-xs text-zinc-500">Duration</label>
+            <select
+              value={creatorDuration}
+              onChange={(e) => setCreatorDuration(Number(e.target.value))}
+              disabled={isGenerating}
+              className={`${inputClass} appearance-none`}
+            >
+              {CREATOR_DURATION_OPTIONS.map((option) => (
+                <option key={option} value={option} className="bg-[#121214] text-white">
+                  {option}s
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {renderAudioToggle(generateAudioEnabled, setGenerateAudioEnabled)}
@@ -683,7 +703,7 @@ const VadeoAdModal: React.FC<Props> = ({
 
   const handleSubmit = () => {
     if (activeTab === 'creator') {
-      onStartCreator(aspectRatio, creatorWebsiteUrl.trim(), creatorBrief, creatorHeadline, creatorCta, creatorFiles);
+      onStartCreator(aspectRatio, creatorDuration, creatorWebsiteUrl.trim(), creatorBrief, creatorHeadline, creatorCta, creatorFiles);
       return;
     }
 

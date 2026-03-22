@@ -10,7 +10,7 @@ interface Props {
 }
 
 const ASPECT_OPTIONS: AspectRatio[] = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9'];
-const DURATION_OPTIONS = [15, 30, 45, 60] as const;
+const DURATION_OPTIONS = [5, 10, 15, 30, 45, 60] as const;
 const MOTION_UPLOAD_LIMIT = 6;
 const MOTION_UPLOAD_INPUT_ID = 'vadeo-motion-upload';
 

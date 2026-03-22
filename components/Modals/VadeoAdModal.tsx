@@ -10,7 +10,7 @@ interface Props {
   onGenerateText: (prompt: string, aspectRatio: AspectRatio, audioEnabled: boolean, audioType: AudioType, imageFile?: File | null) => void;
   onGenerateFrameVideo: (startFile: File, endFile: File, prompt: string, aspectRatio: AspectRatio, audioEnabled: boolean, audioType: AudioType) => void;
   onGenerateRefVideo: (files: File[], prompt: string, aspectRatio: AspectRatio, audioEnabled: boolean, audioType: AudioType) => void;
-  onStartCreator: (aspectRatio: AspectRatio, brief: string, headline: string, cta: string) => void;
+  onStartCreator: (aspectRatio: AspectRatio, websiteUrl: string, brief: string, headline: string, cta: string) => void;
   isGenerating: boolean;
   initialAspectRatio: AspectRatio;
 }
@@ -47,6 +47,7 @@ const VadeoAdModal: React.FC<Props> = ({
   const [generatePrompt, setGeneratePrompt] = useState('');
   const [framePrompt, setFramePrompt] = useState('');
   const [refPrompt, setRefPrompt] = useState('');
+  const [creatorWebsiteUrl, setCreatorWebsiteUrl] = useState('');
   const [creatorBrief, setCreatorBrief] = useState('');
   const [creatorHeadline, setCreatorHeadline] = useState('');
   const [creatorCta, setCreatorCta] = useState('');
@@ -534,9 +535,17 @@ const VadeoAdModal: React.FC<Props> = ({
       <div className="space-y-6">
         <div className="space-y-2">
           <h3 className="text-base font-semibold text-white">Creator</h3>
-          <p className="text-sm leading-relaxed text-zinc-400">
-            Start a guided ad-creation flow inside Vadeo. For now, this prepares the canvas to the aspect ratio you choose so the Creator layer stays separate from your current generation tools.
-          </p>
+        </div>
+
+        <div className="space-y-3">
+          <label className="text-xs text-zinc-500">Website URL (optional)</label>
+          <input
+            value={creatorWebsiteUrl}
+            onChange={(e) => setCreatorWebsiteUrl(e.target.value)}
+            disabled={isGenerating}
+            placeholder="https://yourbrand.com"
+            className={inputClass}
+          />
         </div>
 
         <div className="space-y-3">
@@ -615,7 +624,7 @@ const VadeoAdModal: React.FC<Props> = ({
 
   const handleSubmit = () => {
     if (activeTab === 'creator') {
-      onStartCreator(aspectRatio, creatorBrief, creatorHeadline, creatorCta);
+      onStartCreator(aspectRatio, creatorWebsiteUrl.trim(), creatorBrief, creatorHeadline, creatorCta);
       return;
     }
 

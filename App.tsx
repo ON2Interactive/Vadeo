@@ -1583,12 +1583,13 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
     }
   };
 
-  const handleStartCreator = (aspectRatio: AspectRatio, brief: string, headline: string, cta: string) => {
+  const handleStartCreator = (aspectRatio: AspectRatio, websiteUrl: string, brief: string, headline: string, cta: string) => {
     syncCanvasToAspectRatio(aspectRatio);
     setShowVadeoAdModal(false);
 
     const summaryParts = [
       `Creator workspace prepared for ${aspectRatio}.`,
+      websiteUrl ? 'Website captured.' : null,
       brief ? 'Brief captured.' : null,
       headline ? `Headline: ${headline}.` : null,
       cta ? `CTA: ${cta}.` : null,

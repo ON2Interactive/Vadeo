@@ -20,6 +20,7 @@ export type TrialState = {
   status: TrialStatus;
   startedAt: string | null;
   expiresAt: string | null;
+  motionDownloadsUsed?: number;
 };
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -254,6 +255,23 @@ export const dbHelpers = {
       return { data, error: null };
     } catch (error) {
       return { data: { status: 'none', startedAt: null, expiresAt: null }, error };
+    }
+  },
+
+  async updateTrialState(updates: { motionDownloadsUsed?: number }) {
+    try {
+      const payload: Record<string, unknown> = { scope: 'trial' };
+      if (typeof updates.motionDownloadsUsed === 'number') {
+        payload.motion_downloads_used = updates.motionDownloadsUsed;
+      }
+
+      const data = await fetchJson<TrialState>(buildDataUrl('trial'), {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      });
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error };
     }
   },
 

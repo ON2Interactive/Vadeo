@@ -89,18 +89,6 @@ type PickerCapableInput = HTMLInputElement & {
   showPicker?: () => void;
 };
 
-const getTrialMotionDownloadCount = (userId: string | null) => {
-  if (!userId || typeof window === 'undefined') return 0;
-  const raw = window.localStorage.getItem(`vadeo_trial_motion_downloads:${userId}`);
-  const parsed = Number(raw || '0');
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
-};
-
-const setTrialMotionDownloadCount = (userId: string | null, count: number) => {
-  if (!userId || typeof window === 'undefined') return;
-  window.localStorage.setItem(`vadeo_trial_motion_downloads:${userId}`, String(Math.max(0, count)));
-};
-
 const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState }) => {
   // --- Manage Body Scroll ---
   useEffect(() => {
@@ -188,11 +176,13 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
         localStorage.setItem('vadeo_last_user_id', user.id);
         setIsAdminUser(Boolean(user.is_admin));
         setAccountName(user.full_name || user.email?.split('@')[0] || 'Vadeo User');
-        setTrialMotionDownloadsUsed(getTrialMotionDownloadCount(user.id));
         await dbHelpers.initUserProfile(user.id);
         const accessState = await dbHelpers.getAccessState().catch(() => null);
         if (accessState?.profile) {
           setAccountName(accessState.profile.full_name || user.full_name || user.email?.split('@')[0] || 'Vadeo User');
+        }
+        if (accessState?.trial) {
+          setTrialMotionDownloadsUsed(accessState.trial.motionDownloadsUsed || 0);
         }
         const nextPlan = accessState?.subscription?.plan;
         if (nextPlan === 'starter' || nextPlan === 'standard' || nextPlan === 'premium') {
@@ -1930,8 +1920,10 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
         userId
       ) {
         const nextCount = trialMotionDownloadsUsed + 1;
-        setTrialMotionDownloadCount(userId, nextCount);
         setTrialMotionDownloadsUsed(nextCount);
+        void dbHelpers.updateTrialState({ motionDownloadsUsed: nextCount }).catch((error) => {
+          console.error('Failed to persist trial motion download count:', error);
+        });
       }
     },
     selectedLayerId: editorState.selectedLayerId,

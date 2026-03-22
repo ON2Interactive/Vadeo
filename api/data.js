@@ -96,6 +96,23 @@ export default async function handler(req, res) {
     }
 
     if (scope === 'trial') {
+      if (req.method === 'PATCH') {
+        const updates = {};
+        if (typeof req.body?.motion_downloads_used === 'number') {
+          updates.motion_downloads_used = Math.max(0, req.body.motion_downloads_used);
+        }
+
+        const { data, error } = await supabase
+          .from('user_trials')
+          .update(updates)
+          .eq('app_user_id', session.id)
+          .select('*')
+          .single();
+        if (error) throw error;
+        res.status(200).json(getTrialStateFromRow(data));
+        return;
+      }
+
       if (req.method === 'POST') {
         const { data: existing, error: existingError } = await supabase
           .from('user_trials')
@@ -115,7 +132,7 @@ export default async function handler(req, res) {
 
         const { data, error } = await supabase
           .from('user_trials')
-          .update({ started_at: startedAt, expires_at: expiresAt })
+          .update({ started_at: startedAt, expires_at: expiresAt, motion_downloads_used: 0 })
           .eq('app_user_id', session.id)
           .select('*')
           .single();

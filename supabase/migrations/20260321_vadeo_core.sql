@@ -26,6 +26,7 @@ create table if not exists public.user_trials (
   app_user_id text primary key references public.user_profiles(app_user_id) on delete cascade,
   started_at timestamptz,
   expires_at timestamptz,
+  motion_downloads_used integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

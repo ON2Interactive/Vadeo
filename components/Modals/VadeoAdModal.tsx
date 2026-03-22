@@ -10,7 +10,7 @@ interface Props {
   onGenerateText: (prompt: string, aspectRatio: AspectRatio, audioEnabled: boolean, audioType: AudioType, imageFile?: File | null) => void;
   onGenerateFrameVideo: (startFile: File, endFile: File, prompt: string, aspectRatio: AspectRatio, audioEnabled: boolean, audioType: AudioType) => void;
   onGenerateRefVideo: (files: File[], prompt: string, aspectRatio: AspectRatio, audioEnabled: boolean, audioType: AudioType) => void;
-  onStartCreator: (aspectRatio: AspectRatio, websiteUrl: string, brief: string, headline: string, cta: string) => void;
+  onStartCreator: (aspectRatio: AspectRatio, websiteUrl: string, brief: string, headline: string, cta: string, files: File[]) => void;
   isGenerating: boolean;
   initialAspectRatio: AspectRatio;
 }
@@ -25,6 +25,7 @@ const AUDIO_TYPE_OPTIONS: Array<{ value: AudioType; label: string }> = [
 const REF_IMAGE_LIMIT = 3;
 const GENERATE_UPLOAD_INPUT_ID = 'vadeo-generate-upload';
 const FRAME_START_UPLOAD_INPUT_ID = 'vadeo-frame-start-upload';
+const CREATOR_UPLOAD_INPUT_ID = 'vadeo-creator-upload';
 const REF_UPLOAD_INPUT_IDS = [
   'vadeo-ref-upload-1',
   'vadeo-ref-upload-2',
@@ -51,6 +52,7 @@ const VadeoAdModal: React.FC<Props> = ({
   const [creatorBrief, setCreatorBrief] = useState('');
   const [creatorHeadline, setCreatorHeadline] = useState('');
   const [creatorCta, setCreatorCta] = useState('');
+  const [creatorFiles, setCreatorFiles] = useState<File[]>([]);
   const [generateAudioEnabled, setGenerateAudioEnabled] = useState(true);
   const [frameAudioEnabled, setFrameAudioEnabled] = useState(true);
   const [refAudioEnabled, setRefAudioEnabled] = useState(true);
@@ -64,6 +66,7 @@ const VadeoAdModal: React.FC<Props> = ({
   const generateInputRef = useRef<HTMLInputElement | null>(null);
   const frameUploadInputRef = useRef<HTMLInputElement | null>(null);
   const refUploadInputRef = useRef<HTMLInputElement | null>(null);
+  const creatorUploadInputRef = useRef<HTMLInputElement | null>(null);
 
   const generatePreview = useMemo(
     () => (generateImageFile ? URL.createObjectURL(generateImageFile) : null),
@@ -85,6 +88,11 @@ const VadeoAdModal: React.FC<Props> = ({
     [refFiles]
   );
 
+  const creatorPreviews = useMemo(
+    () => creatorFiles.map((file) => ({ file, url: URL.createObjectURL(file) })),
+    [creatorFiles]
+  );
+
   useEffect(() => () => {
     if (generatePreview) URL.revokeObjectURL(generatePreview);
   }, [generatePreview]);
@@ -102,6 +110,12 @@ const VadeoAdModal: React.FC<Props> = ({
       if (preview?.url) URL.revokeObjectURL(preview.url);
     });
   }, [refPreviews]);
+
+  useEffect(() => () => {
+    creatorPreviews.forEach((preview) => {
+      if (preview.url) URL.revokeObjectURL(preview.url);
+    });
+  }, [creatorPreviews]);
 
   const tabButtonClass = (tab: GenerationTab) =>
     `pb-3 text-sm transition-colors border-b ${activeTab === tab
@@ -191,6 +205,14 @@ const VadeoAdModal: React.FC<Props> = ({
       nextFiles[1] || null,
       nextFiles[2] || null
     ]);
+  };
+
+  const handleCreatorUpload = (fileList: FileList | null) => {
+    const nextFiles = Array.from(fileList || [])
+      .filter((file) => file.type.startsWith('image/'))
+      .slice(0, REF_IMAGE_LIMIT);
+
+    setCreatorFiles(nextFiles);
   };
 
   const renderGenerateTab = () => (
@@ -533,17 +555,54 @@ const VadeoAdModal: React.FC<Props> = ({
   const renderCreatorTab = () => (
     <div className="flex flex-col">
       <div className="space-y-6">
-        <div className="space-y-2">
-          <h3 className="text-base font-semibold text-white">Creator</h3>
+        <div className="space-y-3">
+          <div className="border-b border-zinc-700 pb-4">
+            <div className="flex items-center justify-end gap-3">
+              <label
+                htmlFor={CREATOR_UPLOAD_INPUT_ID}
+                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-zinc-700 text-zinc-200 transition-colors hover:border-white hover:text-white"
+                title="Upload 1 to 3 reference images"
+              >
+                <Upload size={16} />
+              </label>
+              <input
+                ref={creatorUploadInputRef}
+                id={CREATOR_UPLOAD_INPUT_ID}
+                type="file"
+                accept="image/*"
+                multiple
+                disabled={isGenerating}
+                onChange={(e) => handleCreatorUpload(e.target.files)}
+                className="sr-only"
+              />
+            </div>
+
+            {creatorPreviews.length > 0 && (
+              <div className="mt-4 flex gap-4">
+                {creatorPreviews.map((preview, index) => (
+                  <div key={`${preview.file.name}-${index}`} className="space-y-2">
+                    <button
+                      type="button"
+                      onDoubleClick={() => creatorUploadInputRef.current?.click()}
+                      className="h-[60px] w-[60px] overflow-hidden rounded-md border border-zinc-800 bg-zinc-900"
+                      title="Double-click to replace images"
+                    >
+                      <img src={preview.url} alt={`Creator upload preview ${index + 1}`} className="w-full h-full object-cover" />
+                    </button>
+                    <p className="text-[11px] text-zinc-400">Image {index + 1}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="space-y-3">
-          <label className="text-xs text-zinc-500">Website URL (optional)</label>
           <input
             value={creatorWebsiteUrl}
             onChange={(e) => setCreatorWebsiteUrl(e.target.value)}
             disabled={isGenerating}
-            placeholder="https://yourbrand.com"
+            placeholder="Website URL (optional)"
             className={inputClass}
           />
         </div>
@@ -624,7 +683,7 @@ const VadeoAdModal: React.FC<Props> = ({
 
   const handleSubmit = () => {
     if (activeTab === 'creator') {
-      onStartCreator(aspectRatio, creatorWebsiteUrl.trim(), creatorBrief, creatorHeadline, creatorCta);
+      onStartCreator(aspectRatio, creatorWebsiteUrl.trim(), creatorBrief, creatorHeadline, creatorCta, creatorFiles);
       return;
     }
 

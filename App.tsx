@@ -2059,7 +2059,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
           useLocalProjects={DEV_BYPASS_AUTH_SAVE && !userId}
         />
       )}
-      {showExportDialog && <ExportDialog onClose={() => setShowExportDialog(false)} onConfirm={handleConfirmExport} aspectRatio={activePage.aspectRatio} currentWidth={activePage.width} currentHeight={activePage.height} hasVideo={hasVideo} suggestedDuration={maxVideoDuration} isPro={hasPremiumAccess} onShowPro={() => setShowProModal(true)} />}
+      {showExportDialog && <ExportDialog onClose={() => setShowExportDialog(false)} onConfirm={handleConfirmExport} aspectRatio={activePage.aspectRatio} currentWidth={activePage.width} currentHeight={activePage.height} hasVideo={hasVideo} suggestedDuration={Math.max(maxVideoDuration, Math.round(timelineDurationMs / 1000))} isPro={hasPremiumAccess} onShowPro={() => setShowProModal(true)} />}
       {showProModal && !DEV_BYPASS_CREDITS && <ProModal onClose={() => setShowProModal(false)} onUpgrade={handleUpgrade} />}
       <SettingsModal
         isOpen={showSettingsModal}

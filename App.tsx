@@ -1685,17 +1685,6 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
             mediaType: 'image',
             visible: true,
             locked: false,
-            keyframes: [
-              { time: 0, x: placement.x, y: placement.y, width: placement.width, height: placement.height, opacity: 1 },
-              {
-                time: sceneDurationMs,
-                x: placement.x - targetDims.w * 0.03,
-                y: placement.y - targetDims.h * 0.03,
-                width: placement.width * 1.06,
-                height: placement.height * 1.06,
-                opacity: 1,
-              }
-            ]
           } as ImageLayer,
           {
             id: overlayId,
@@ -1814,99 +1803,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
           layers,
         };
       });
-
-      const finalPage: Page = {
-        id: uuidv4(),
-        name: `Scene ${imagePages.length + 1}`,
-        aspectRatio,
-        width: targetDims.w,
-        height: targetDims.h,
-        backgroundColor: '#050505',
-        layers: [
-          {
-            id: uuidv4(),
-            name: 'Final Headline',
-            type: LayerType.TEXT,
-            x: targetDims.w * 0.12,
-            y: targetDims.h * 0.3,
-            width: targetDims.w * 0.76,
-            height: 220,
-            rotation: 0,
-            opacity: 1,
-            text: primaryHeadline,
-            fontSize: Math.max(56, Math.round(targetDims.w * 0.05)),
-            fontFamily: 'Helvetica',
-            fontWeight: 'bold',
-            fill: '#ffffff',
-            align: 'center',
-            letterSpacing: 0,
-            lineHeight: 1.05,
-            visible: true,
-            locked: false,
-          } as TextLayer,
-          {
-            id: uuidv4(),
-            name: 'Final Detail',
-            type: LayerType.TEXT,
-            x: targetDims.w * 0.18,
-            y: targetDims.h * 0.5,
-            width: targetDims.w * 0.64,
-            height: 120,
-            rotation: 0,
-            opacity: 0.95,
-            text: briefLine || `Motion draft prepared for ${duration}s in ${aspectRatio}.`,
-            fontSize: Math.max(22, Math.round(targetDims.w * 0.015)),
-            fontFamily: 'Helvetica',
-            fontWeight: 'normal',
-            fill: '#d4d4d8',
-            align: 'center',
-            letterSpacing: 0,
-            lineHeight: 1.35,
-            visible: true,
-            locked: false,
-          } as TextLayer,
-          {
-            id: uuidv4(),
-            name: 'Final CTA Pill',
-            type: LayerType.RECT,
-            x: targetDims.w * 0.35,
-            y: targetDims.h * 0.72,
-            width: targetDims.w * 0.3,
-            height: Math.max(72, targetDims.h * 0.075),
-            rotation: 0,
-            opacity: 1,
-            fill: '#ffffff',
-            stroke: '#ffffff',
-            strokeWidth: 0,
-            cornerRadius: Math.max(36, targetDims.h * 0.035),
-            visible: true,
-            locked: false,
-          } as ShapeLayer,
-          {
-            id: uuidv4(),
-            name: 'Final CTA Text',
-            type: LayerType.TEXT,
-            x: targetDims.w * 0.35,
-            y: targetDims.h * 0.742,
-            width: targetDims.w * 0.3,
-            height: 50,
-            rotation: 0,
-            opacity: 1,
-            text: primaryCta,
-            fontSize: Math.max(22, Math.round(targetDims.w * 0.015)),
-            fontFamily: 'Helvetica',
-            fontWeight: 'bold',
-            fill: '#050505',
-            align: 'center',
-            letterSpacing: 0,
-            lineHeight: 1.2,
-            visible: true,
-            locked: false,
-          } as TextLayer
-        ],
-      };
-
-      const pages = [...imagePages, finalPage];
+      const pages = imagePages;
 
       setEditorState(prev => ({
         ...prev,

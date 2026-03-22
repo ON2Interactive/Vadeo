@@ -65,6 +65,54 @@ const buildSession = async () => {
   }
 };
 
+const persistEditorMedia = async (editorState: any) => {
+  if (!editorState?.pages) return editorState;
+
+  const pages = await Promise.all(
+    editorState.pages.map(async (page: any) => {
+      const layers = await Promise.all(
+        (page.layers || []).map(async (layer: any) => {
+          if (layer?.type === 'IMAGE' && typeof layer.src === 'string') {
+            return {
+              ...layer,
+              src: await localMediaStore.persistBlobUrl(layer.src)
+            };
+          }
+          return layer;
+        })
+      );
+
+      return { ...page, layers };
+    })
+  );
+
+  return { ...editorState, pages };
+};
+
+const resolveEditorMedia = async (editorState: any) => {
+  if (!editorState?.pages) return editorState;
+
+  const pages = await Promise.all(
+    editorState.pages.map(async (page: any) => {
+      const layers = await Promise.all(
+        (page.layers || []).map(async (layer: any) => {
+          if (layer?.type === 'IMAGE' && typeof layer.src === 'string' && localMediaStore.isLocalMediaUri(layer.src)) {
+            return {
+              ...layer,
+              src: await localMediaStore.resolveSrc(layer.src)
+            };
+          }
+          return layer;
+        })
+      );
+
+      return { ...page, layers };
+    })
+  );
+
+  return { ...editorState, pages };
+};
+
 const redirectToGoogle = (redirectPath = '/editor') => {
   if (typeof window === 'undefined') return;
 
@@ -290,12 +338,13 @@ export const dbHelpers = {
     }
 
     try {
+      const persistedEditorState = await persistEditorMedia(editorState);
       const data = await fetchJson<any>(buildDataUrl('projects'), {
         method: 'POST',
         body: JSON.stringify({
           scope: 'projects',
           name: projectName,
-          editor_state: editorState,
+          editor_state: persistedEditorState,
           thumbnail,
         }),
       });
@@ -307,13 +356,14 @@ export const dbHelpers = {
 
   async updateProject(projectId: string, projectName: string, editorState: any, thumbnail?: string) {
     try {
+      const persistedEditorState = await persistEditorMedia(editorState);
       const data = await fetchJson<any>(buildDataUrl('project'), {
         method: 'PATCH',
         body: JSON.stringify({
           scope: 'project',
           id: projectId,
           name: projectName,
-          editor_state: editorState,
+          editor_state: persistedEditorState,
           thumbnail,
         }),
       });
@@ -338,7 +388,15 @@ export const dbHelpers = {
   async getProject(projectId: string) {
     try {
       const data = await fetchJson<any>(buildDataUrl('project', { id: projectId }));
-      return { data, error: null };
+      return {
+        data: data
+          ? {
+              ...data,
+              editor_state: await resolveEditorMedia(data.editor_state)
+            }
+          : data,
+        error: null
+      };
     } catch (error) {
       return { data: null, error };
     }

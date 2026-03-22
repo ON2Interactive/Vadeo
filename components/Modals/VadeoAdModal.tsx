@@ -269,7 +269,7 @@ const VadeoAdModal: React.FC<Props> = ({
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="space-y-3">
           <div className="space-y-3">
             <label className="text-xs text-zinc-500">Aspect ratio</label>
             <select
@@ -280,42 +280,10 @@ const VadeoAdModal: React.FC<Props> = ({
             >
               {ASPECT_OPTIONS.map((ratio) => (
                 <option key={ratio} value={ratio} className="bg-[#121214] text-white">
-                  {ratio}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-3">
-            <label className="text-xs text-zinc-500">Duration</label>
-            <select
-              value={creatorDuration}
-              onChange={(e) => setCreatorDuration(Number(e.target.value))}
-              disabled={isGenerating}
-              className={`${inputClass} appearance-none`}
-            >
-              {CREATOR_DURATION_OPTIONS.map((option) => (
-                <option key={option} value={option} className="bg-[#121214] text-white">
-                  {option}s
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-3">
-            <label className="text-xs text-zinc-500">Animation</label>
-            <select
-              value={creatorAnimation}
-              onChange={(e) => setCreatorAnimation(e.target.value as MotionAnimationPreset)}
-              disabled={isGenerating}
-              className={`${inputClass} appearance-none`}
-            >
-              {CREATOR_ANIMATION_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value} className="bg-[#121214] text-white">
-                  {option.label}
-                </option>
-              ))}
-            </select>
+                {ratio}
+              </option>
+            ))}
+          </select>
           </div>
         </div>
 
@@ -446,20 +414,54 @@ const VadeoAdModal: React.FC<Props> = ({
           </div>
         </div>
 
-        <div className="space-y-3">
-          <label className="text-xs text-zinc-500">Aspect ratio</label>
-          <select
-            value={aspectRatio}
-            onChange={(e) => setAspectRatio(e.target.value as AspectRatio)}
-            disabled={isGenerating}
-            className={`${inputClass} appearance-none`}
-          >
-            {ASPECT_OPTIONS.map((ratio) => (
-              <option key={ratio} value={ratio} className="bg-[#121214] text-white">
-                {ratio}
-              </option>
-            ))}
-          </select>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="space-y-3">
+            <label className="text-xs text-zinc-500">Aspect ratio</label>
+            <select
+              value={aspectRatio}
+              onChange={(e) => setAspectRatio(e.target.value as AspectRatio)}
+              disabled={isGenerating}
+              className={`${inputClass} appearance-none`}
+            >
+              {ASPECT_OPTIONS.map((ratio) => (
+                <option key={ratio} value={ratio} className="bg-[#121214] text-white">
+                  {ratio}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-xs text-zinc-500">Duration</label>
+            <select
+              value={creatorDuration}
+              onChange={(e) => setCreatorDuration(Number(e.target.value))}
+              disabled={isGenerating}
+              className={`${inputClass} appearance-none`}
+            >
+              {CREATOR_DURATION_OPTIONS.map((option) => (
+                <option key={option} value={option} className="bg-[#121214] text-white">
+                  {option}s
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-xs text-zinc-500">Animation</label>
+            <select
+              value={creatorAnimation}
+              onChange={(e) => setCreatorAnimation(e.target.value as MotionAnimationPreset)}
+              disabled={isGenerating}
+              className={`${inputClass} appearance-none`}
+            >
+              {CREATOR_ANIMATION_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value} className="bg-[#121214] text-white">
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {renderAudioToggle(frameAudioEnabled, setFrameAudioEnabled)}

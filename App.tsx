@@ -1893,6 +1893,8 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
     stageRef,
     activePage,
     projectName,
+    playheadTime: editorState.playheadTime,
+    isPlaying: editorState.isPlaying,
     selectedLayerId: editorState.selectedLayerId,
     selectedLayerIds: editorState.selectedLayerIds,
     selectedKeyframe: editorState.selectedKeyframe,

@@ -8,6 +8,8 @@ interface UseExportProps {
     stageRef: React.RefObject<Konva.Stage>;
     activePage: Page;
     projectName: string;
+    playheadTime: number;
+    isPlaying: boolean;
     selectedLayerId: string | null;
     selectedLayerIds: string[];
     selectedKeyframe: { layerId: string, time: number } | null;
@@ -21,6 +23,8 @@ export const useExport = ({
     stageRef,
     activePage,
     projectName,
+    playheadTime,
+    isPlaying,
     selectedLayerId,
     selectedLayerIds,
     selectedKeyframe,
@@ -209,6 +213,8 @@ export const useExport = ({
         }
 
         const previousSelection = {
+            playheadTime,
+            isPlaying,
             selectedLayerId,
             selectedLayerIds,
             selectedKeyframe
@@ -422,6 +428,8 @@ export const useExport = ({
                 await exportAudio?.cleanup();
                 setEditorState(prev => ({
                     ...prev,
+                    playheadTime: previousSelection.playheadTime,
+                    isPlaying: previousSelection.isPlaying,
                     selectedLayerId: previousSelection.selectedLayerId,
                     selectedLayerIds: previousSelection.selectedLayerIds,
                     selectedKeyframe: previousSelection.selectedKeyframe
@@ -491,6 +499,12 @@ export const useExport = ({
             const playLayers = updateVideoState(activePage.layers, true, false);
             updateActivePage({ layers: playLayers });
             await exportAudio?.play();
+            setEditorState(prev => ({
+                ...prev,
+                playheadTime: 0,
+                isPlaying: true,
+                selectedKeyframe: null
+            }));
 
             // Redraw Loop for Chrome
             let isRecording = true;
@@ -513,6 +527,11 @@ export const useExport = ({
             const timer = setInterval(() => {
                 elapsed += 100;
                 setExportProgress(Math.min(100, (elapsed / duration) * 100));
+                setEditorState(prev => ({
+                    ...prev,
+                    playheadTime: Math.min(duration, elapsed),
+                    isPlaying: elapsed < duration
+                }));
                 if (elapsed >= duration) {
                     clearInterval(timer);
                     isRecording = false;
@@ -526,6 +545,8 @@ export const useExport = ({
             console.error('❌ Export failed:', err);
             setEditorState(prev => ({
                 ...prev,
+                playheadTime: previousSelection.playheadTime,
+                isPlaying: previousSelection.isPlaying,
                 selectedLayerId: previousSelection.selectedLayerId,
                 selectedLayerIds: previousSelection.selectedLayerIds,
                 selectedKeyframe: previousSelection.selectedKeyframe

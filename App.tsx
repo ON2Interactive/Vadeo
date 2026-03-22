@@ -29,6 +29,7 @@ import ExportDialog from './components/Editor/ExportDialog';
 import ProModal from './components/Modals/ProModal';
 import AIModal from './components/Modals/AIModal';
 import VadeoAdModal from './components/Modals/VadeoAdModal';
+import MotionModal from './components/Modals/MotionModal';
 import CreditsModal from './components/Modals/CreditsModal';
 import SettingsModal from './components/Modals/SettingsModal';
 import GridOverlay, { GridType } from './components/Editor/GridOverlay';
@@ -107,6 +108,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
   const [showProModal, setShowProModal] = useState(false);
   const [showAIModal, setShowAIModal] = useState(false);
   const [showVadeoAdModal, setShowVadeoAdModal] = useState(false);
+  const [showMotionModal, setShowMotionModal] = useState(false);
   const [aiLayerId, setAILayerId] = useState<string | null>(null);
 
   // New State for Supabase Integration
@@ -1602,6 +1604,25 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
     }, 4000);
   };
 
+  const handleStartMotion = (aspectRatio: AspectRatio, duration: number, brief: string, headline: string, cta: string, files: File[]) => {
+    syncCanvasToAspectRatio(aspectRatio);
+    setShowMotionModal(false);
+
+    const summaryParts = [
+      `Motion workspace prepared for ${aspectRatio}.`,
+      `${duration}s selected.`,
+      files.length > 0 ? `${files.length} image${files.length > 1 ? 's' : ''} attached.` : null,
+      brief ? 'Brief captured.' : null,
+      headline ? `Headline: ${headline}.` : null,
+      cta ? `CTA: ${cta}.` : null,
+    ].filter(Boolean);
+
+    setCreatorNotice(summaryParts.join(' '));
+    window.setTimeout(() => {
+      setCreatorNotice(null);
+    }, 4000);
+  };
+
   /* --- EXPORT LOGIC --- */
 
 
@@ -1836,6 +1857,14 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
           initialAspectRatio={activePage.aspectRatio}
         />
       )}
+      {showMotionModal && (
+        <MotionModal
+          onClose={() => setShowMotionModal(false)}
+          onStartMotion={handleStartMotion}
+          isGenerating={isGenerating}
+          initialAspectRatio={activePage.aspectRatio}
+        />
+      )}
 
       {showCreditsModal && (
         <CreditsModal
@@ -1946,6 +1975,13 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
               title={hasGenerationAccess ? 'Create Video Ad' : 'Upgrade to Standard or Premium'}
             >
               <Sparkles size={18} strokeWidth={1.9} fill="currentColor" />
+            </button>
+            <button
+              onClick={() => setShowMotionModal(true)}
+              className="px-3 py-2 rounded text-sm font-semibold text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors"
+              title="Open Motion"
+            >
+              Motion
             </button>
             <button onClick={handleUndo} disabled={editorState.historyIndex <= 0} className="p-2 hover:bg-zinc-800 disabled:opacity-20 rounded transition-colors"><Undo2 size={18} /></button>
             <button onClick={handleRedo} disabled={editorState.historyIndex >= editorState.history.length - 1} className="p-2 hover:bg-zinc-800 disabled:opacity-20 rounded transition-colors"><Redo2 size={18} /></button>

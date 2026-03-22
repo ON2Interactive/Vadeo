@@ -1604,23 +1604,341 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
     }, 4000);
   };
 
-  const handleStartMotion = (aspectRatio: AspectRatio, duration: number, brief: string, headline: string, cta: string, files: File[]) => {
-    syncCanvasToAspectRatio(aspectRatio);
-    setShowMotionModal(false);
+  const handleStartMotion = async (aspectRatio: AspectRatio, duration: number, brief: string, headline: string, cta: string, files: File[]) => {
+    if (files.length === 0) {
+      alert('Upload at least one image to start Motion.');
+      return;
+    }
 
-    const summaryParts = [
-      `Motion workspace prepared for ${aspectRatio}.`,
-      `${duration}s selected.`,
-      files.length > 0 ? `${files.length} image${files.length > 1 ? 's' : ''} attached.` : null,
-      brief ? 'Brief captured.' : null,
-      headline ? `Headline: ${headline}.` : null,
-      cta ? `CTA: ${cta}.` : null,
-    ].filter(Boolean);
+    const targetDims = ASPECT_RATIOS[aspectRatio];
+    if (!targetDims) {
+      alert('Unsupported aspect ratio for Motion.');
+      return;
+    }
 
-    setCreatorNotice(summaryParts.join(' '));
-    window.setTimeout(() => {
-      setCreatorNotice(null);
-    }, 4000);
+    const readImageAsset = (file: File) => new Promise<{ src: string; width: number; height: number }>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const src = typeof reader.result === 'string' ? reader.result : '';
+        if (!src) {
+          reject(new Error('Failed to read uploaded image.'));
+          return;
+        }
+
+        const image = new Image();
+        image.onload = () => {
+          resolve({
+            src,
+            width: image.naturalWidth || targetDims.w,
+            height: image.naturalHeight || targetDims.h,
+          });
+        };
+        image.onerror = () => reject(new Error('Failed to load uploaded image.'));
+        image.src = src;
+      };
+      reader.onerror = () => reject(new Error('Failed to read uploaded image.'));
+      reader.readAsDataURL(file);
+    });
+
+    try {
+      const assets = await Promise.all(files.map(readImageAsset));
+      const sceneDurationMs = duration * 1000;
+      const primaryHeadline = headline.trim() || 'Create Video Ads';
+      const primaryCta = cta.trim() || 'Start Free Trial';
+      const briefLine = brief.trim();
+
+      const buildCoverPlacement = (assetWidth: number, assetHeight: number) => {
+        const scale = Math.max(targetDims.w / assetWidth, targetDims.h / assetHeight);
+        const width = assetWidth * scale;
+        const height = assetHeight * scale;
+        return {
+          x: (targetDims.w - width) / 2,
+          y: (targetDims.h - height) / 2,
+          width,
+          height,
+        };
+      };
+
+      const imagePages: Page[] = assets.map((asset, index) => {
+        const placement = buildCoverPlacement(asset.width, asset.height);
+        const imageLayerId = uuidv4();
+        const overlayId = uuidv4();
+        const titleId = uuidv4();
+        const detailId = uuidv4();
+        const ctaPillId = uuidv4();
+        const ctaTextId = uuidv4();
+        const isFirstScene = index === 0;
+        const isLastImageScene = index === assets.length - 1;
+
+        const layers: Layer[] = [
+          {
+            id: imageLayerId,
+            name: `Scene ${index + 1} Image`,
+            type: LayerType.IMAGE,
+            x: placement.x,
+            y: placement.y,
+            width: placement.width,
+            height: placement.height,
+            rotation: 0,
+            opacity: 1,
+            src: asset.src,
+            mediaType: 'image',
+            visible: true,
+            locked: false,
+            keyframes: [
+              { time: 0, x: placement.x, y: placement.y, width: placement.width, height: placement.height, opacity: 1 },
+              {
+                time: sceneDurationMs,
+                x: placement.x - targetDims.w * 0.03,
+                y: placement.y - targetDims.h * 0.03,
+                width: placement.width * 1.06,
+                height: placement.height * 1.06,
+                opacity: 1,
+              }
+            ]
+          } as ImageLayer,
+          {
+            id: overlayId,
+            name: `Scene ${index + 1} Overlay`,
+            type: LayerType.RECT,
+            x: 0,
+            y: targetDims.h * 0.58,
+            width: targetDims.w,
+            height: targetDims.h * 0.42,
+            rotation: 0,
+            opacity: 0.72,
+            fill: '#050505',
+            stroke: '#050505',
+            strokeWidth: 0,
+            cornerRadius: 0,
+            visible: true,
+            locked: false,
+          } as ShapeLayer,
+          {
+            id: titleId,
+            name: `Scene ${index + 1} Title`,
+            type: LayerType.TEXT,
+            x: targetDims.w * 0.08,
+            y: targetDims.h * 0.65,
+            width: targetDims.w * 0.7,
+            height: 160,
+            rotation: 0,
+            opacity: 1,
+            text: isFirstScene ? primaryHeadline : `Scene ${index + 1}`,
+            fontSize: Math.max(42, Math.round(targetDims.w * 0.04)),
+            fontFamily: 'Helvetica',
+            fontWeight: 'bold',
+            fill: '#ffffff',
+            align: 'left',
+            letterSpacing: 0,
+            lineHeight: 1.05,
+            visible: true,
+            locked: false,
+          } as TextLayer,
+        ];
+
+        if (briefLine) {
+          layers.push({
+            id: detailId,
+            name: `Scene ${index + 1} Detail`,
+            type: LayerType.TEXT,
+            x: targetDims.w * 0.08,
+            y: targetDims.h * 0.77,
+            width: targetDims.w * 0.64,
+            height: 120,
+            rotation: 0,
+            opacity: 0.95,
+            text: isFirstScene ? briefLine : `Structured for ${duration}s delivery across ${aspectRatio}.`,
+            fontSize: Math.max(18, Math.round(targetDims.w * 0.013)),
+            fontFamily: 'Helvetica',
+            fontWeight: 'normal',
+            fill: '#d4d4d8',
+            align: 'left',
+            letterSpacing: 0,
+            lineHeight: 1.35,
+            visible: true,
+            locked: false,
+          } as TextLayer);
+        }
+
+        if (isLastImageScene) {
+          layers.push(
+            {
+              id: ctaPillId,
+              name: 'CTA Pill',
+              type: LayerType.RECT,
+              x: targetDims.w * 0.08,
+              y: targetDims.h * 0.885,
+              width: Math.max(240, targetDims.w * 0.22),
+              height: Math.max(60, targetDims.h * 0.065),
+              rotation: 0,
+              opacity: 1,
+              fill: '#ffffff',
+              stroke: '#ffffff',
+              strokeWidth: 0,
+              cornerRadius: Math.max(30, targetDims.h * 0.03),
+              visible: true,
+              locked: false,
+            } as ShapeLayer,
+            {
+              id: ctaTextId,
+              name: 'CTA Text',
+              type: LayerType.TEXT,
+              x: targetDims.w * 0.08,
+              y: targetDims.h * 0.898,
+              width: Math.max(240, targetDims.w * 0.22),
+              height: 50,
+              rotation: 0,
+              opacity: 1,
+              text: primaryCta,
+              fontSize: Math.max(18, Math.round(targetDims.w * 0.013)),
+              fontFamily: 'Helvetica',
+              fontWeight: 'bold',
+              fill: '#050505',
+              align: 'center',
+              letterSpacing: 0,
+              lineHeight: 1.2,
+              visible: true,
+              locked: false,
+            } as TextLayer
+          );
+        }
+
+        return {
+          id: uuidv4(),
+          name: `Scene ${index + 1}`,
+          aspectRatio,
+          width: targetDims.w,
+          height: targetDims.h,
+          backgroundColor: '#050505',
+          layers,
+        };
+      });
+
+      const finalPage: Page = {
+        id: uuidv4(),
+        name: `Scene ${imagePages.length + 1}`,
+        aspectRatio,
+        width: targetDims.w,
+        height: targetDims.h,
+        backgroundColor: '#050505',
+        layers: [
+          {
+            id: uuidv4(),
+            name: 'Final Headline',
+            type: LayerType.TEXT,
+            x: targetDims.w * 0.12,
+            y: targetDims.h * 0.3,
+            width: targetDims.w * 0.76,
+            height: 220,
+            rotation: 0,
+            opacity: 1,
+            text: primaryHeadline,
+            fontSize: Math.max(56, Math.round(targetDims.w * 0.05)),
+            fontFamily: 'Helvetica',
+            fontWeight: 'bold',
+            fill: '#ffffff',
+            align: 'center',
+            letterSpacing: 0,
+            lineHeight: 1.05,
+            visible: true,
+            locked: false,
+          } as TextLayer,
+          {
+            id: uuidv4(),
+            name: 'Final Detail',
+            type: LayerType.TEXT,
+            x: targetDims.w * 0.18,
+            y: targetDims.h * 0.5,
+            width: targetDims.w * 0.64,
+            height: 120,
+            rotation: 0,
+            opacity: 0.95,
+            text: briefLine || `Motion draft prepared for ${duration}s in ${aspectRatio}.`,
+            fontSize: Math.max(22, Math.round(targetDims.w * 0.015)),
+            fontFamily: 'Helvetica',
+            fontWeight: 'normal',
+            fill: '#d4d4d8',
+            align: 'center',
+            letterSpacing: 0,
+            lineHeight: 1.35,
+            visible: true,
+            locked: false,
+          } as TextLayer,
+          {
+            id: uuidv4(),
+            name: 'Final CTA Pill',
+            type: LayerType.RECT,
+            x: targetDims.w * 0.35,
+            y: targetDims.h * 0.72,
+            width: targetDims.w * 0.3,
+            height: Math.max(72, targetDims.h * 0.075),
+            rotation: 0,
+            opacity: 1,
+            fill: '#ffffff',
+            stroke: '#ffffff',
+            strokeWidth: 0,
+            cornerRadius: Math.max(36, targetDims.h * 0.035),
+            visible: true,
+            locked: false,
+          } as ShapeLayer,
+          {
+            id: uuidv4(),
+            name: 'Final CTA Text',
+            type: LayerType.TEXT,
+            x: targetDims.w * 0.35,
+            y: targetDims.h * 0.742,
+            width: targetDims.w * 0.3,
+            height: 50,
+            rotation: 0,
+            opacity: 1,
+            text: primaryCta,
+            fontSize: Math.max(22, Math.round(targetDims.w * 0.015)),
+            fontFamily: 'Helvetica',
+            fontWeight: 'bold',
+            fill: '#050505',
+            align: 'center',
+            letterSpacing: 0,
+            lineHeight: 1.2,
+            visible: true,
+            locked: false,
+          } as TextLayer
+        ],
+      };
+
+      const pages = [...imagePages, finalPage];
+
+      setEditorState(prev => ({
+        ...prev,
+        pages,
+        activePageId: pages[0].id,
+        history: [[...pages]],
+        historyIndex: 0,
+        selectedLayerId: null,
+        selectedLayerIds: [],
+        playheadTime: 0,
+        isPlaying: false,
+        selectedKeyframe: null,
+      }));
+      setProjectName((current) => current === 'Untitled Design' || current === 'Untitled Project' ? (primaryHeadline || 'Motion Draft') : current);
+      setLastSaved(null);
+      setShowMotionModal(false);
+      setActiveTool('select');
+
+      const summaryParts = [
+        `Motion draft created in ${aspectRatio}.`,
+        `${pages.length} scenes ready.`,
+        `${duration}s selected.`,
+      ];
+
+      setCreatorNotice(summaryParts.join(' '));
+      window.setTimeout(() => {
+        setCreatorNotice(null);
+      }, 4000);
+    } catch (error) {
+      console.error(error);
+      alert(error instanceof Error ? error.message : 'Failed to build motion draft.');
+    }
   };
 
   /* --- EXPORT LOGIC --- */

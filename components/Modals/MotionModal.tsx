@@ -185,7 +185,7 @@ const MotionModal: React.FC<Props> = ({
         <div className="mt-8 flex justify-end">
           <button
             onClick={() => onStartMotion(aspectRatio, duration, brief, headline, cta, files)}
-            disabled={isGenerating}
+            disabled={isGenerating || files.length === 0}
             className="h-14 rounded-full px-6 flex items-center justify-center transition-all active:scale-[0.98] bg-white text-black hover:bg-zinc-200 disabled:opacity-50 disabled:hover:bg-white text-sm font-semibold"
           >
             {isGenerating ? <Loader2 size={18} className="animate-spin" /> : 'Start Motion'}

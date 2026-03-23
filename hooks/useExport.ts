@@ -688,35 +688,59 @@ export const useExport = ({
                 requestAnimationFrame(forceRedraw);
             }
 
-            const advancePlayback = () => {
-                if (!isRecording) return;
+            if (shouldFollowPrimaryVideoClock && primaryCanvasVideo) {
+                const monitorPrimaryVideo = () => {
+                    if (!isRecording) return;
 
-                const elapsed = Math.min(
-                    duration,
-                    shouldFollowPrimaryVideoClock && primaryCanvasVideo
-                        ? Math.max(0, (primaryCanvasVideo.currentTime || 0) * 1000)
-                        : performance.now() - recordingStart
-                );
-                setExportProgress(Math.min(100, (elapsed / duration) * 100));
-                exportAudio?.sync?.(Math.min(duration, elapsed));
-                setEditorState(prev => ({
-                    ...prev,
-                    playheadTime: Math.min(duration, elapsed),
-                    isPlaying: elapsed < duration
-                }));
+                    const elapsed = Math.min(duration, Math.max(0, (primaryCanvasVideo.currentTime || 0) * 1000));
+                    setExportProgress(Math.min(100, (elapsed / duration) * 100));
 
-                if (elapsed >= duration) {
-                    isRecording = false;
-                    if (recorder.state === 'recording') {
-                        recorder.stop();
+                    if (elapsed >= duration || primaryCanvasVideo.ended) {
+                        isRecording = false;
+                        if (recorder.state === 'recording') {
+                            recorder.stop();
+                        }
+                        return;
                     }
-                    return;
+
+                    if (typeof (primaryCanvasVideo as any).requestVideoFrameCallback === 'function') {
+                        (primaryCanvasVideo as any).requestVideoFrameCallback(() => monitorPrimaryVideo());
+                    } else {
+                        rafId = requestAnimationFrame(monitorPrimaryVideo);
+                    }
+                };
+
+                if (typeof (primaryCanvasVideo as any).requestVideoFrameCallback === 'function') {
+                    (primaryCanvasVideo as any).requestVideoFrameCallback(() => monitorPrimaryVideo());
+                } else {
+                    rafId = requestAnimationFrame(monitorPrimaryVideo);
                 }
+            } else {
+                const advancePlayback = () => {
+                    if (!isRecording) return;
+
+                    const elapsed = Math.min(duration, performance.now() - recordingStart);
+                    setExportProgress(Math.min(100, (elapsed / duration) * 100));
+                    exportAudio?.sync?.(Math.min(duration, elapsed));
+                    setEditorState(prev => ({
+                        ...prev,
+                        playheadTime: Math.min(duration, elapsed),
+                        isPlaying: elapsed < duration
+                    }));
+
+                    if (elapsed >= duration) {
+                        isRecording = false;
+                        if (recorder.state === 'recording') {
+                            recorder.stop();
+                        }
+                        return;
+                    }
+
+                    rafId = requestAnimationFrame(advancePlayback);
+                };
 
                 rafId = requestAnimationFrame(advancePlayback);
-            };
-
-            rafId = requestAnimationFrame(advancePlayback);
+            }
 
         } catch (err: any) {
             console.error('❌ Export failed:', err);

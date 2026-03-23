@@ -4,26 +4,50 @@ import { AspectRatio } from '../../types';
 
 type GenerationTab = 'generate' | 'frame-video' | 'ref-video' | 'creator';
 type AudioType = 'auto' | 'dialogue' | 'sound-effects' | 'ambient';
+type MotionAiMode = 'image-to-video' | 'frames-to-video';
+type MotionAiCameraMotion =
+  | 'subtle-push-in'
+  | 'slow-dolly-left'
+  | 'slow-dolly-right'
+  | 'tilt-up'
+  | 'tilt-down'
+  | 'orbit-arc'
+  | 'handheld-luxury'
+  | 'product-hero-sweep';
 
 interface Props {
   onClose: () => void;
   onGenerateText: (prompt: string, aspectRatio: AspectRatio, audioEnabled: boolean, audioType: AudioType, imageFile?: File | null) => void;
   onGenerateFrameVideo: (startFile: File, endFile: File, prompt: string, aspectRatio: AspectRatio, audioEnabled: boolean, audioType: AudioType) => void;
   onGenerateRefVideo: (files: File[], prompt: string, aspectRatio: AspectRatio, audioEnabled: boolean, audioType: AudioType) => void;
-  onStartCreator: (aspectRatio: AspectRatio, duration: number, websiteUrl: string, brief: string, headline: string, cta: string, files: File[], audioEnabled: boolean, audioType: AudioType) => void;
+  onStartCreator: (aspectRatio: AspectRatio, mode: MotionAiMode, cameraMotion: MotionAiCameraMotion, brief: string, headline: string, cta: string, files: File[], audioEnabled: boolean, audioType: AudioType) => void;
   isGenerating: boolean;
   initialAspectRatio: AspectRatio;
 }
 
 const ASPECT_OPTIONS: AspectRatio[] = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9'];
-const MOTION_AI_DURATION_SEC = 15;
 const AUDIO_TYPE_OPTIONS: Array<{ value: AudioType; label: string }> = [
   { value: 'auto', label: 'Auto' },
   { value: 'dialogue', label: 'Dialogue' },
   { value: 'sound-effects', label: 'Sound effects' },
   { value: 'ambient', label: 'Ambient' }
 ];
+const MOTION_AI_MODE_OPTIONS: Array<{ value: MotionAiMode; label: string }> = [
+  { value: 'image-to-video', label: 'Image to Video' },
+  { value: 'frames-to-video', label: 'Frames to Video' },
+];
+const MOTION_AI_CAMERA_OPTIONS: Array<{ value: MotionAiCameraMotion; label: string }> = [
+  { value: 'subtle-push-in', label: 'Subtle Push In' },
+  { value: 'slow-dolly-left', label: 'Slow Dolly Left' },
+  { value: 'slow-dolly-right', label: 'Slow Dolly Right' },
+  { value: 'tilt-up', label: 'Tilt Up' },
+  { value: 'tilt-down', label: 'Tilt Down' },
+  { value: 'orbit-arc', label: 'Orbit / Arc' },
+  { value: 'handheld-luxury', label: 'Handheld Luxury' },
+  { value: 'product-hero-sweep', label: 'Product Hero Sweep' },
+];
 const REF_IMAGE_LIMIT = 3;
+const MOTION_AI_UPLOAD_LIMIT = 2;
 const GENERATE_UPLOAD_INPUT_ID = 'vadeo-generate-upload';
 const FRAME_START_UPLOAD_INPUT_ID = 'vadeo-frame-start-upload';
 const CREATOR_UPLOAD_INPUT_ID = 'vadeo-creator-upload';
@@ -49,11 +73,12 @@ const VadeoAdModal: React.FC<Props> = ({
   const [generatePrompt, setGeneratePrompt] = useState('');
   const [framePrompt, setFramePrompt] = useState('');
   const [refPrompt, setRefPrompt] = useState('');
-  const [creatorWebsiteUrl, setCreatorWebsiteUrl] = useState('');
   const [creatorBrief, setCreatorBrief] = useState('');
   const [creatorHeadline, setCreatorHeadline] = useState('');
   const [creatorCta, setCreatorCta] = useState('');
   const [creatorFiles, setCreatorFiles] = useState<File[]>([]);
+  const [creatorMode, setCreatorMode] = useState<MotionAiMode>('image-to-video');
+  const [creatorCameraMotion, setCreatorCameraMotion] = useState<MotionAiCameraMotion>('subtle-push-in');
   const [generateAudioEnabled, setGenerateAudioEnabled] = useState(true);
   const [frameAudioEnabled, setFrameAudioEnabled] = useState(true);
   const [refAudioEnabled, setRefAudioEnabled] = useState(true);
@@ -211,9 +236,10 @@ const VadeoAdModal: React.FC<Props> = ({
   };
 
   const handleCreatorUpload = (fileList: FileList | null) => {
+    const maxFiles = creatorMode === 'image-to-video' ? 1 : MOTION_AI_UPLOAD_LIMIT;
     const nextFiles = Array.from(fileList || [])
       .filter((file) => file.type.startsWith('image/'))
-      .slice(0, REF_IMAGE_LIMIT);
+      .slice(0, maxFiles);
 
     setCreatorFiles(nextFiles);
   };
@@ -570,7 +596,7 @@ const VadeoAdModal: React.FC<Props> = ({
               <label
                 htmlFor={CREATOR_UPLOAD_INPUT_ID}
                 className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-zinc-700 text-zinc-200 transition-colors hover:border-white hover:text-white"
-                title="Upload up to 3 reference images"
+                title="Upload one or two reference images"
               >
                 <Upload size={16} />
               </label>
@@ -598,7 +624,13 @@ const VadeoAdModal: React.FC<Props> = ({
                     >
                       <img src={preview.url} alt={`Creator upload preview ${index + 1}`} className="w-full h-full object-cover" />
                     </button>
-                    <p className="text-[11px] text-zinc-400">Image {index + 1}</p>
+                    <p className="text-[11px] text-zinc-400">
+                      {creatorMode === 'frames-to-video'
+                        ? index === 0
+                          ? 'Start Frame'
+                          : 'End Frame'
+                        : `Image ${index + 1}`}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -606,17 +638,27 @@ const VadeoAdModal: React.FC<Props> = ({
           </div>
         </div>
 
-        <div className="space-y-3">
-          <input
-            value={creatorWebsiteUrl}
-            onChange={(e) => setCreatorWebsiteUrl(e.target.value)}
-            disabled={isGenerating}
-            placeholder="Website URL (optional)"
-            className={inputClass}
-          />
-        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-3">
+            <label className="text-xs text-zinc-500">Mode</label>
+            <select
+              value={creatorMode}
+              onChange={(e) => {
+                const nextMode = e.target.value as MotionAiMode;
+                setCreatorMode(nextMode);
+                setCreatorFiles((prev) => (nextMode === 'image-to-video' ? prev.slice(0, 1) : prev.slice(0, MOTION_AI_UPLOAD_LIMIT)));
+              }}
+              disabled={isGenerating}
+              className={`${inputClass} appearance-none`}
+            >
+              {MOTION_AI_MODE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value} className="bg-[#121214] text-white">
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-3">
             <label className="text-xs text-zinc-500">Aspect ratio</label>
             <select
@@ -636,10 +678,26 @@ const VadeoAdModal: React.FC<Props> = ({
           <div className="space-y-3">
             <label className="text-xs text-zinc-500">Duration</label>
             <input
-              value="15s"
+              value="8s"
               disabled
               className={`${inputClass} opacity-70`}
             />
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-xs text-zinc-500">Camera motion</label>
+            <select
+              value={creatorCameraMotion}
+              onChange={(e) => setCreatorCameraMotion(e.target.value as MotionAiCameraMotion)}
+              disabled={isGenerating}
+              className={`${inputClass} appearance-none`}
+            >
+              {MOTION_AI_CAMERA_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value} className="bg-[#121214] text-white">
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -708,8 +766,8 @@ const VadeoAdModal: React.FC<Props> = ({
     if (activeTab === 'creator') {
       onStartCreator(
         aspectRatio,
-        MOTION_AI_DURATION_SEC,
-        creatorWebsiteUrl.trim(),
+        creatorMode,
+        creatorCameraMotion,
         creatorBrief,
         creatorHeadline,
         creatorCta,

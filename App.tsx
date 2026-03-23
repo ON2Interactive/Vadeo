@@ -1673,7 +1673,17 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
     }
   };
 
-  const handleStartCreator = async (aspectRatio: AspectRatio, duration: number, websiteUrl: string, brief: string, headline: string, cta: string, files: File[], audioEnabled: boolean, audioType: 'auto' | 'dialogue' | 'sound-effects' | 'ambient') => {
+  const handleStartCreator = async (
+    aspectRatio: AspectRatio,
+    mode: 'image-to-video' | 'frames-to-video',
+    cameraMotion: 'subtle-push-in' | 'slow-dolly-left' | 'slow-dolly-right' | 'tilt-up' | 'tilt-down' | 'orbit-arc' | 'handheld-luxury' | 'product-hero-sweep',
+    brief: string,
+    headline: string,
+    cta: string,
+    files: File[],
+    audioEnabled: boolean,
+    audioType: 'auto' | 'dialogue' | 'sound-effects' | 'ambient'
+  ) => {
     if (!isAdminUser && currentPlan !== 'standard' && currentPlan !== 'premium') {
       alert('Motion AI is available on Standard and Premium.');
       setShowCreditsModal(true);
@@ -1691,9 +1701,19 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
       return;
     }
 
-    const imageFiles = files.filter((file) => file.type.startsWith('image/')).slice(0, VADEO_MAX_AD_IMAGES);
+    const imageFiles = files.filter((file) => file.type.startsWith('image/')).slice(0, 2);
     if (imageFiles.length === 0) {
       alert('Motion AI currently supports image uploads only.');
+      return;
+    }
+
+    if (mode === 'image-to-video' && imageFiles.length !== 1) {
+      alert('Image to Video requires exactly one image.');
+      return;
+    }
+
+    if (mode === 'frames-to-video' && imageFiles.length !== 2) {
+      alert('Frames to Video requires exactly two images.');
       return;
     }
 
@@ -1709,12 +1729,11 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
     try {
       syncCanvasToAspectRatio(aspectRatio);
       const motionAiResolution = getGenerationResolution();
-
-      const imageInputs = await Promise.all(imageFiles.map(async (file) => {
-        const base64 = await new Promise<string>((resolve, reject) => {
+      const imageDataUrls = await Promise.all(imageFiles.map(async (file) => {
+        return await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onloadend = () => {
-            const result = typeof reader.result === 'string' ? reader.result.split(',')[1] || '' : '';
+            const result = typeof reader.result === 'string' ? reader.result : '';
             if (!result) {
               reject(new Error('Failed to read uploaded image.'));
               return;
@@ -1724,56 +1743,38 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
           reader.onerror = () => reject(new Error('Failed to read uploaded image.'));
           reader.readAsDataURL(file);
         });
-
-        return {
-          base64,
-          mimeType: file.type || 'image/png'
-        };
       }));
 
       const normalizedRatio = normalizeVeoAspectRatio(aspectRatio);
+      const cameraDirectionMap: Record<typeof cameraMotion, string> = {
+        'subtle-push-in': 'Use a subtle premium push-in camera move with steady elegant pacing.',
+        'slow-dolly-left': 'Use a slow cinematic dolly left move with smooth premium motion.',
+        'slow-dolly-right': 'Use a slow cinematic dolly right move with smooth premium motion.',
+        'tilt-up': 'Use a controlled upward tilt reveal with elegant camera discipline.',
+        'tilt-down': 'Use a controlled downward tilt reveal with elegant camera discipline.',
+        'orbit-arc': 'Use a tasteful orbital arc move around the subject with premium product cinematography.',
+        'handheld-luxury': 'Use subtle luxury handheld motion that feels expensive, controlled, and modern.',
+        'product-hero-sweep': 'Use a polished hero sweep that emphasizes the product silhouette, materials, and finish.',
+      };
       const promptContext = [
-        websiteUrl ? `Brand website: ${websiteUrl}.` : null,
+        mode === 'frames-to-video'
+          ? 'Generate one premium 8-second ad shot that starts on the first frame and resolves naturally into the second frame.'
+          : 'Generate one premium 8-second ad shot from the provided image with visually grounded opening continuity.',
+        cameraDirectionMap[cameraMotion],
+        'Do not bake any text, subtitles, logos, lower thirds, or CTA buttons into the video because they will be added in post.',
         headline ? `Headline: ${headline}.` : null,
         cta ? `CTA: ${cta}.` : null,
         brief ? `Creative brief: ${brief}.` : null,
       ].filter(Boolean).join(' ');
 
-      const segmentPrompts = [
-        [
-          'Create the opening segment of a premium 15-second social video ad.',
-          'Focus on the hook, immediate visual interest, and product introduction.',
-          'Do not bake any text, subtitles, logos, lower thirds, or CTA buttons into the video because they will be added in post.',
-          promptContext
-        ].filter(Boolean).join(' '),
-        [
-          'Create the closing segment of a premium 15-second social video ad.',
-          'Focus on product payoff, benefit emphasis, and a strong closing hero moment that sets up the CTA.',
-          'Keep continuity with the opening segment in styling, subject, lighting, and motion language.',
-          'Do not bake any text, subtitles, logos, lower thirds, or CTA buttons into the video because they will be added in post.',
-          promptContext
-        ].filter(Boolean).join(' ')
-      ];
-
-      setStatusText('Generating Motion AI clip 1 of 2...');
-      const firstClipUrl = await aiService.generateVideoAdFromImages(
-        imageInputs,
-        segmentPrompts[0],
+      setStatusText('Generating Motion AI scene...');
+      const resultUrl = await aiService.generateVideoFromImage(
+        imageDataUrls[0],
+        mode === 'frames-to-video' ? imageDataUrls[1] : null,
+        promptContext,
         normalizedRatio,
         motionAiResolution,
-        (status) => setStatusText(`Clip 1: ${status}`),
-        false,
-        audioEnabled,
-        audioType
-      );
-
-      setStatusText('Generating Motion AI clip 2 of 2...');
-      const secondClipUrl = await aiService.generateVideoAdFromImages(
-        imageInputs,
-        segmentPrompts[1],
-        normalizedRatio,
-        motionAiResolution,
-        (status) => setStatusText(`Clip 2: ${status}`),
+        (status) => setStatusText(`Motion AI: ${status}`),
         false,
         audioEnabled,
         audioType
@@ -1806,27 +1807,15 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
         video.src = src;
       });
 
-      const [firstClip, secondClip] = await Promise.all([
-        loadVideoMetadata(firstClipUrl),
-        loadVideoMetadata(secondClipUrl)
-      ]);
-
-      const totalDurationMs = Math.max(15000, duration * 1000);
-      const firstStartMs = 0;
-      const firstEndMs = 8000;
-      const secondStartMs = 7000;
-      const secondEndMs = totalDurationMs;
+      const clip = await loadVideoMetadata(resultUrl);
+      const totalDurationMs = Math.max(8000, Math.round((clip.durationSec || VEO_GENERATED_DURATION_SEC) * 1000));
 
       const buildVideoLayer = (
         name: string,
-        clip: { src: string; width: number; height: number; durationSec: number },
-        startMs: number,
-        endMs: number,
-        isFirst: boolean,
+        clipMeta: { src: string; width: number; height: number; durationSec: number },
       ): ImageLayer => {
-        const placement = buildCoverPlacement(clip.width, clip.height);
-        const clipDurationMs = Math.round((clip.durationSec || VEO_GENERATED_DURATION_SEC) * 1000);
-        const fadeMs = 1000;
+        const placement = buildCoverPlacement(clipMeta.width, clipMeta.height);
+        const clipDurationMs = Math.round((clipMeta.durationSec || VEO_GENERATED_DURATION_SEC) * 1000);
         return {
           id: uuidv4(),
           name,
@@ -1836,27 +1825,23 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
           width: placement.width,
           height: placement.height,
           rotation: 0,
-          opacity: isFirst ? 1 : 0,
-          src: clip.src,
+          opacity: 1,
+          src: clipMeta.src,
           mediaType: 'video',
           playing: true,
           loop: false,
           volume: 1,
           currentTime: 0,
-          duration: clip.durationSec || VEO_GENERATED_DURATION_SEC,
+          duration: clipMeta.durationSec || VEO_GENERATED_DURATION_SEC,
           audioFadeInMs: audioEnabled ? GENERATED_AUDIO_FADE_MS : 0,
           audioFadeOutMs: audioEnabled ? GENERATED_AUDIO_FADE_MS : 0,
-          clipStartMs: startMs,
-          clipEndMs: endMs,
+          clipStartMs: 0,
+          clipEndMs: totalDurationMs,
           visible: true,
           locked: false,
           keyframes: [
-            { time: 0, opacity: isFirst ? 1 : 0, currentTime: 0 },
-            { time: startMs, opacity: isFirst ? 1 : 0, currentTime: 0 },
-            { time: Math.min(endMs, startMs + fadeMs), opacity: 1, currentTime: Math.min(clipDurationMs, fadeMs) / 1000 },
-            { time: Math.max(startMs + fadeMs, endMs - fadeMs), opacity: 1, currentTime: Math.max(0, clipDurationMs - fadeMs) / 1000 },
-            { time: endMs, opacity: endMs >= totalDurationMs ? 1 : 0, currentTime: Math.min(clipDurationMs, endMs - startMs) / 1000 },
-            { time: totalDurationMs, opacity: endMs >= totalDurationMs ? 1 : 0, currentTime: clip.durationSec || VEO_GENERATED_DURATION_SEC },
+            { time: 0, opacity: 1, currentTime: 0 },
+            { time: totalDurationMs, opacity: 1, currentTime: clipDurationMs / 1000 },
           ]
         };
       };
@@ -1873,8 +1858,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
         height: targetDims.h,
         backgroundColor: '#050505',
         layers: [
-          buildVideoLayer('Motion AI Clip 1', firstClip, firstStartMs, firstEndMs, true),
-          buildVideoLayer('Motion AI Clip 2', secondClip, secondStartMs, secondEndMs, false),
+          buildVideoLayer('Motion AI Clip', clip),
           {
             id: uuidv4(),
             name: 'Motion AI Overlay',
@@ -1984,7 +1968,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
         setMotionAiLimit(motionAiResult.data.limit || 0);
       }
 
-      setCreatorNotice(`Motion AI created a 15s ${motionAiResolution} draft with 2 Veo segments and Remotion-style overlays.`);
+      setCreatorNotice(`Motion AI created one 8s ${motionAiResolution} scene with Remotion-style overlays.`);
       window.setTimeout(() => setCreatorNotice(null), 4000);
     } catch (err: any) {
       console.error(err);

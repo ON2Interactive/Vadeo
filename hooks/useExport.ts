@@ -622,7 +622,7 @@ export const useExport = ({
             setStatusText("Recording Scene...");
 
             // Put the canvas/video layers at frame 0 before recording starts.
-            const playLayers = updateVideoState(seekLayers, true, false);
+            const playLayers = updateVideoState(seekLayers, true, true);
             updateActivePage({ layers: playLayers });
             await exportAudio?.play();
             await exportAudio?.sync?.(0);
@@ -640,25 +640,10 @@ export const useExport = ({
 
             await waitForCanvasVideosToStart(stage, videoLayers);
 
-            // CRITICAL: use timeslice to prevent chunk loss
-            recorder.start(250);
-
-            // Redraw Loop for Chrome
             let isRecording = true;
             const duration = config.duration;
             let rafId = 0;
             const recordingStart = performance.now();
-
-            const forceRedraw = () => {
-                if (!isRecording) return;
-                const layers = stage.children;
-                if (layers) {
-                    layers.forEach((layer: any) => layer.draw());
-                } else {
-                    stage.draw();
-                }
-                requestAnimationFrame(forceRedraw);
-            };
             const getNodeVideo = (layerId: string): HTMLVideoElement | null => {
                 const node = stage.findOne(`#${layerId}`) as Konva.Image | undefined;
                 const media = node?.image?.();
@@ -672,21 +657,8 @@ export const useExport = ({
                 !videoLayers[0].keyframes?.some((keyframe) => typeof keyframe.currentTime === 'number')
             );
 
-            if (primaryCanvasVideo && typeof (primaryCanvasVideo as any).requestVideoFrameCallback === 'function') {
-                const drawOnVideoFrame = () => {
-                    if (!isRecording) return;
-                    const layers = stage.children;
-                    if (layers) {
-                        layers.forEach((layer: any) => layer.draw());
-                    } else {
-                        stage.draw();
-                    }
-                    (primaryCanvasVideo as any).requestVideoFrameCallback(() => drawOnVideoFrame());
-                };
-                (primaryCanvasVideo as any).requestVideoFrameCallback(() => drawOnVideoFrame());
-            } else {
-                requestAnimationFrame(forceRedraw);
-            }
+            // CRITICAL: use timeslice to prevent chunk loss
+            recorder.start(250);
 
             if (shouldFollowPrimaryVideoClock && primaryCanvasVideo) {
                 const monitorPrimaryVideo = () => {
@@ -715,32 +687,60 @@ export const useExport = ({
                 } else {
                     rafId = requestAnimationFrame(monitorPrimaryVideo);
                 }
-            } else {
-                const advancePlayback = () => {
+                return;
+            }
+
+            const forceRedraw = () => {
+                if (!isRecording) return;
+                const layers = stage.children;
+                if (layers) {
+                    layers.forEach((layer: any) => layer.draw());
+                } else {
+                    stage.draw();
+                }
+                requestAnimationFrame(forceRedraw);
+            };
+
+            if (primaryCanvasVideo && typeof (primaryCanvasVideo as any).requestVideoFrameCallback === 'function') {
+                const drawOnVideoFrame = () => {
                     if (!isRecording) return;
-
-                    const elapsed = Math.min(duration, performance.now() - recordingStart);
-                    setExportProgress(Math.min(100, (elapsed / duration) * 100));
-                    exportAudio?.sync?.(Math.min(duration, elapsed));
-                    setEditorState(prev => ({
-                        ...prev,
-                        playheadTime: Math.min(duration, elapsed),
-                        isPlaying: elapsed < duration
-                    }));
-
-                    if (elapsed >= duration) {
-                        isRecording = false;
-                        if (recorder.state === 'recording') {
-                            recorder.stop();
-                        }
-                        return;
+                    const layers = stage.children;
+                    if (layers) {
+                        layers.forEach((layer: any) => layer.draw());
+                    } else {
+                        stage.draw();
                     }
-
-                    rafId = requestAnimationFrame(advancePlayback);
+                    (primaryCanvasVideo as any).requestVideoFrameCallback(() => drawOnVideoFrame());
                 };
+                (primaryCanvasVideo as any).requestVideoFrameCallback(() => drawOnVideoFrame());
+            } else {
+                requestAnimationFrame(forceRedraw);
+            }
+
+            const advancePlayback = () => {
+                if (!isRecording) return;
+
+                const elapsed = Math.min(duration, performance.now() - recordingStart);
+                setExportProgress(Math.min(100, (elapsed / duration) * 100));
+                exportAudio?.sync?.(Math.min(duration, elapsed));
+                setEditorState(prev => ({
+                    ...prev,
+                    playheadTime: Math.min(duration, elapsed),
+                    isPlaying: elapsed < duration
+                }));
+
+                if (elapsed >= duration) {
+                    isRecording = false;
+                    if (recorder.state === 'recording') {
+                        recorder.stop();
+                    }
+                    return;
+                }
 
                 rafId = requestAnimationFrame(advancePlayback);
-            }
+            };
+
+            rafId = requestAnimationFrame(advancePlayback);
 
         } catch (err: any) {
             console.error('❌ Export failed:', err);

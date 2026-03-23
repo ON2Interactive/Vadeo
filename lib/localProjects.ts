@@ -61,6 +61,18 @@ const persistEditorMedia = async (editorState: any) => {
   return { ...editorState, pages };
 };
 
+const sanitizeEditorStateForPersistence = (editorState: any) => {
+  if (!editorState?.pages) return editorState;
+
+  return {
+    pages: editorState.pages,
+    activePageId: editorState.activePageId,
+    zoom: editorState.zoom,
+    pan: editorState.pan,
+    isPro: editorState.isPro
+  };
+};
+
 const resolveEditorMedia = async (editorState: any) => {
   if (!editorState?.pages) return editorState;
 
@@ -78,7 +90,12 @@ const resolveEditorMedia = async (editorState: any) => {
         })
       );
 
-      return { ...page, layers };
+      const resolvedThumbnail =
+        typeof page.thumbnail === 'string' && localMediaStore.isLocalMediaUri(page.thumbnail)
+          ? await localMediaStore.resolveSrc(page.thumbnail)
+          : page.thumbnail;
+
+      return { ...page, layers, thumbnail: resolvedThumbnail };
     })
   );
 
@@ -102,12 +119,18 @@ export const localProjectStore = {
 
   async save(project: { id: string; name: string; editorState: any; thumbnail?: string }) {
     const projects = readProjects();
-    const persistedEditorState = await persistEditorMedia(project.editorState);
+    const persistedEditorState = await persistEditorMedia(
+      sanitizeEditorStateForPersistence(project.editorState)
+    );
+    const persistedThumbnail =
+      typeof project.thumbnail === 'string'
+        ? await localMediaStore.persistBlobUrl(project.thumbnail)
+        : project.thumbnail;
     const nextProject: LocalProjectRecord = {
       id: project.id,
       name: project.name,
       editor_state: persistedEditorState,
-      thumbnail: project.thumbnail,
+      thumbnail: persistedThumbnail,
       updated_at: new Date().toISOString()
     };
 

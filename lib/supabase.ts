@@ -106,6 +106,18 @@ const persistEditorMedia = async (editorState: any) => {
   return { ...editorState, pages };
 };
 
+const sanitizeEditorStateForPersistence = (editorState: any) => {
+  if (!editorState?.pages) return editorState;
+
+  return {
+    pages: editorState.pages,
+    activePageId: editorState.activePageId,
+    zoom: editorState.zoom,
+    pan: editorState.pan,
+    isPro: editorState.isPro
+  };
+};
+
 const resolveEditorMedia = async (editorState: any) => {
   if (!editorState?.pages) return editorState;
 
@@ -432,7 +444,9 @@ export const dbHelpers = {
     }
 
     try {
-      const persistedEditorState = await persistEditorMedia(editorState);
+      const persistedEditorState = await persistEditorMedia(
+        sanitizeEditorStateForPersistence(editorState)
+      );
       const persistedThumbnail = typeof thumbnail === 'string'
         ? await localMediaStore.persistBlobUrl(thumbnail)
         : thumbnail;
@@ -453,7 +467,9 @@ export const dbHelpers = {
 
   async updateProject(projectId: string, projectName: string, editorState: any, thumbnail?: string) {
     try {
-      const persistedEditorState = await persistEditorMedia(editorState);
+      const persistedEditorState = await persistEditorMedia(
+        sanitizeEditorStateForPersistence(editorState)
+      );
       const persistedThumbnail = typeof thumbnail === 'string'
         ? await localMediaStore.persistBlobUrl(thumbnail)
         : thumbnail;

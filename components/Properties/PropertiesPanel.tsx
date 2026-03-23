@@ -257,6 +257,10 @@ const SliderField = ({
         max={max}
         step={step}
         value={localValue}
+        onDoubleClick={() => {
+          isSliding.current = false;
+          commit(0);
+        }}
         onMouseDown={() => {
           isSliding.current = true;
         }}

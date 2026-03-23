@@ -551,10 +551,8 @@ export const useExport = ({
             };
 
             setStatusText("Recording Scene...");
-            // CRITICAL: use timeslice to prevent chunk loss
-            recorder.start(100);
 
-            // Play videos
+            // Put the canvas/video layers at frame 0 before recording starts.
             const playLayers = updateVideoState(activePage.layers, true, false);
             updateActivePage({ layers: playLayers });
             await exportAudio?.play();
@@ -566,10 +564,19 @@ export const useExport = ({
                 selectedKeyframe: null
             }));
 
+            // Give React/Konva two paint frames to settle the first video frame.
+            await new Promise<void>((resolve) => {
+                requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+            });
+
+            // CRITICAL: use timeslice to prevent chunk loss
+            recorder.start(250);
+
             // Redraw Loop for Chrome
             let isRecording = true;
             const duration = config.duration;
-            let elapsed = 0;
+            let rafId = 0;
+            const recordingStart = performance.now();
 
             const forceRedraw = () => {
                 if (!isRecording) return;
@@ -584,8 +591,10 @@ export const useExport = ({
 
             requestAnimationFrame(forceRedraw);
 
-            const timer = setInterval(() => {
-                elapsed += 100;
+            const advancePlayback = () => {
+                if (!isRecording) return;
+
+                const elapsed = Math.min(duration, performance.now() - recordingStart);
                 setExportProgress(Math.min(100, (elapsed / duration) * 100));
                 exportAudio?.sync?.(Math.min(duration, elapsed));
                 setEditorState(prev => ({
@@ -593,14 +602,19 @@ export const useExport = ({
                     playheadTime: Math.min(duration, elapsed),
                     isPlaying: elapsed < duration
                 }));
+
                 if (elapsed >= duration) {
-                    clearInterval(timer);
                     isRecording = false;
                     if (recorder.state === 'recording') {
                         recorder.stop();
                     }
+                    return;
                 }
-            }, 100);
+
+                rafId = requestAnimationFrame(advancePlayback);
+            };
+
+            rafId = requestAnimationFrame(advancePlayback);
 
         } catch (err: any) {
             console.error('❌ Export failed:', err);

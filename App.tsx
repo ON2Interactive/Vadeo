@@ -93,7 +93,7 @@ const buildPersistedEditorSnapshot = (editorState: EditorState) => JSON.stringif
   pan: editorState.pan,
   isPro: editorState.isPro
 });
-const applyPlaybackTimeToLayer = (layer: Layer, playheadMs: number): Layer => {
+const applyPlaybackTimeToLayer = (layer: Layer, playheadMs: number, isPlaying: boolean): Layer => {
   if (layer.type !== LayerType.IMAGE || layer.mediaType !== 'video') {
     return layer;
   }
@@ -103,6 +103,12 @@ const applyPlaybackTimeToLayer = (layer: Layer, playheadMs: number): Layer => {
   );
 
   if (hasCurrentTimeKeyframes) {
+    return layer;
+  }
+
+  // Let non-keyframed video clips play naturally once started.
+  // We only derive currentTime from the playhead while paused/scrubbing.
+  if (isPlaying) {
     return layer;
   }
 
@@ -3055,7 +3061,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
                     const shouldInterpolate = editorState.isPlaying || editorState.playheadTime > 0 || isKeyframeSelected;
 
                     const displayLayer = shouldInterpolate
-                      ? applyPlaybackTimeToLayer(TimelineEngine.getInterpolatedLayer(layer, targetTime), targetTime)
+                      ? applyPlaybackTimeToLayer(TimelineEngine.getInterpolatedLayer(layer, targetTime), targetTime, editorState.isPlaying)
                       : layer;
 
                     return (<CanvasElement
@@ -3091,7 +3097,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
               : editorState.playheadTime;
 
             if (editorState.isPlaying || editorState.playheadTime > 0 || isKeyframeSelected) {
-              return applyPlaybackTimeToLayer(TimelineEngine.getInterpolatedLayer(layer, targetTime), targetTime);
+              return applyPlaybackTimeToLayer(TimelineEngine.getInterpolatedLayer(layer, targetTime), targetTime, editorState.isPlaying);
             }
             return layer;
           })()}

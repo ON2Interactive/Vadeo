@@ -170,16 +170,15 @@ export const useExport = ({
 
                         gainNode.gain.value = targetVolume;
 
-                        if (Math.abs((video.currentTime || 0) - localTime) > 0.2) {
-                            try {
-                                video.currentTime = localTime;
-                            } catch (error) {
-                                console.warn('Failed to sync export audio currentTime:', error);
-                            }
-                        }
-
                         if (shouldBeActive && targetVolume > 0.001) {
                             if (video.paused) {
+                                if (Math.abs((video.currentTime || 0) - localTime) > 0.2) {
+                                    try {
+                                        video.currentTime = localTime;
+                                    } catch (error) {
+                                        console.warn('Failed to sync export audio currentTime:', error);
+                                    }
+                                }
                                 video.play().catch((error) => {
                                     console.warn('Export audio playback failed:', error);
                                 });
@@ -561,7 +560,7 @@ export const useExport = ({
             setStatusText("Recording Scene...");
 
             // Put the canvas/video layers at frame 0 before recording starts.
-            const playLayers = updateVideoState(activePage.layers, true, false);
+            const playLayers = updateVideoState(seekLayers, true, false);
             updateActivePage({ layers: playLayers });
             await exportAudio?.play();
             await exportAudio?.sync?.(0);

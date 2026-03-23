@@ -267,6 +267,50 @@ export const useExport = ({
         });
     };
 
+    const waitForCanvasVideosToStart = useCallback(async (stage: Konva.Stage, videoLayers: ImageLayer[]) => {
+        if (videoLayers.length === 0) return;
+
+        const getNodeVideo = (layerId: string): HTMLVideoElement | null => {
+            const node = stage.findOne(`#${layerId}`) as Konva.Image | undefined;
+            const media = node?.image?.();
+            return media instanceof HTMLVideoElement ? media : null;
+        };
+
+        const deadline = performance.now() + 2500;
+
+        await new Promise<void>((resolve) => {
+            const poll = () => {
+                const readyVideos = videoLayers
+                    .map((layer) => getNodeVideo(layer.id))
+                    .filter((video): video is HTMLVideoElement => Boolean(video));
+
+                if (readyVideos.length === 0) {
+                    if (performance.now() >= deadline) {
+                        resolve();
+                        return;
+                    }
+                    requestAnimationFrame(poll);
+                    return;
+                }
+
+                const allAdvanced = readyVideos.every((video) => {
+                    const advanced = (video.currentTime ?? 0) > (1 / 30);
+                    const activelyPlaying = !video.paused && !video.ended;
+                    return advanced && activelyPlaying;
+                });
+
+                if (allAdvanced || performance.now() >= deadline) {
+                    resolve();
+                    return;
+                }
+
+                requestAnimationFrame(poll);
+            };
+
+            poll();
+        });
+    }, []);
+
     const executeExport = async (config: ExportConfig) => {
         if (!stageRef.current) {
             alert("Internal Error: Stage reference is missing. Please reload the page.");
@@ -575,6 +619,8 @@ export const useExport = ({
             await new Promise<void>((resolve) => {
                 requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
             });
+
+            await waitForCanvasVideosToStart(stage, videoLayers);
 
             // CRITICAL: use timeslice to prevent chunk loss
             recorder.start(250);

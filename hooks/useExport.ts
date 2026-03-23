@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import Konva from 'konva';
-import { Layer, LayerType, ImageLayer, Page, EditorState, ExportConfig } from '../types';
+import { Layer, LayerType, ImageLayer, Page, EditorState, ExportConfig, TextLayer, ShapeLayer } from '../types';
 
 const DEFAULT_VIDEO_DURATION_SEC = 8;
 
@@ -329,6 +329,251 @@ export const useExport = ({
         });
     }, []);
 
+    const exportSingleMotionAiClip = useCallback(async ({
+        clipLayer,
+        config,
+        fileHandle,
+        finalFilename,
+        mimeType,
+    }: {
+        clipLayer: ImageLayer;
+        config: ExportConfig;
+        fileHandle: any;
+        finalFilename: string;
+        mimeType: string;
+    }) => {
+        const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContextCtor) {
+            throw new Error('AudioContext is not available for Motion AI export.');
+        }
+
+        const outputWidth = config.targetWidth;
+        const outputHeight = Math.round((config.targetWidth * activePage.height) / activePage.width);
+        const scaleX = outputWidth / activePage.width;
+        const scaleY = outputHeight / activePage.height;
+
+        const exportCanvas = document.createElement('canvas');
+        exportCanvas.width = outputWidth;
+        exportCanvas.height = outputHeight;
+        const ctx = exportCanvas.getContext('2d');
+        if (!ctx) {
+            throw new Error('Failed to create export canvas context.');
+        }
+
+        const clipVideo = document.createElement('video');
+        const isBlobOrData = clipLayer.src.startsWith('blob:') || clipLayer.src.startsWith('data:');
+        if (!isBlobOrData) {
+            clipVideo.crossOrigin = 'anonymous';
+        }
+        clipVideo.src = isBlobOrData ? clipLayer.src : `${clipLayer.src}${clipLayer.src.includes('?') ? '&' : '?'}t=${Date.now()}`;
+        clipVideo.preload = 'auto';
+        clipVideo.playsInline = true;
+        clipVideo.loop = false;
+        clipVideo.muted = false;
+        clipVideo.volume = 1;
+
+        await new Promise<void>((resolve, reject) => {
+            const onLoaded = () => resolve();
+            clipVideo.addEventListener('loadeddata', onLoaded, { once: true });
+            clipVideo.onerror = () => reject(new Error('Failed to load Motion AI clip for export.'));
+            clipVideo.load();
+        });
+
+        const clipDurationMs = Math.min(
+            config.duration,
+            Math.round((clipVideo.duration || clipLayer.duration || DEFAULT_VIDEO_DURATION_SEC) * 1000)
+        );
+
+        const audioContext = new AudioContextCtor();
+        const destination = audioContext.createMediaStreamDestination();
+        const audioSource = audioContext.createMediaElementSource(clipVideo);
+        const audioGain = audioContext.createGain();
+        audioGain.gain.value = clipLayer.volume ?? 1;
+        audioSource.connect(audioGain);
+        audioGain.connect(destination);
+
+        const stream = exportCanvas.captureStream(60);
+        destination.stream.getAudioTracks().forEach((track) => stream.addTrack(track));
+
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+            throw new Error('MP4 export is not supported in this browser session.');
+        }
+
+        const recorder = new MediaRecorder(stream, {
+            mimeType,
+            videoBitsPerSecond: config.targetWidth > 2000 ? 25000000 : 8000000
+        });
+
+        const chunks: Blob[] = [];
+        recorder.ondataavailable = (e) => {
+            if (e.data && e.data.size > 0) chunks.push(e.data);
+        };
+
+        const drawTextLayer = (layer: TextLayer) => {
+            const fontSize = Math.max(1, layer.fontSize * Math.min(scaleX, scaleY));
+            const x = layer.x * scaleX;
+            const y = layer.y * scaleY;
+            const width = layer.width * scaleX;
+            const lineHeight = fontSize * (layer.lineHeight || 1.2);
+
+            ctx.save();
+            ctx.globalAlpha = layer.opacity ?? 1;
+            ctx.fillStyle = layer.fill || '#ffffff';
+            ctx.font = `${layer.fontWeight || 'normal'} ${fontSize}px ${layer.fontFamily || 'Helvetica'}`;
+            ctx.textBaseline = 'top';
+
+            const words = (layer.text || '').split(/\s+/).filter(Boolean);
+            const lines: string[] = [];
+            let currentLine = '';
+            words.forEach((word) => {
+                const candidate = currentLine ? `${currentLine} ${word}` : word;
+                const metrics = ctx.measureText(candidate);
+                if (metrics.width > width && currentLine) {
+                    lines.push(currentLine);
+                    currentLine = word;
+                } else {
+                    currentLine = candidate;
+                }
+            });
+            if (currentLine) lines.push(currentLine);
+
+            lines.forEach((line, index) => {
+                const metrics = ctx.measureText(line);
+                let drawX = x;
+                if (layer.align === 'center') {
+                    drawX = x + (width - metrics.width) / 2;
+                } else if (layer.align === 'right') {
+                    drawX = x + width - metrics.width;
+                }
+                ctx.fillText(line, drawX, y + index * lineHeight);
+            });
+            ctx.restore();
+        };
+
+        const drawShapeLayer = (layer: ShapeLayer) => {
+            if (layer.type !== LayerType.RECT) return;
+            ctx.save();
+            ctx.globalAlpha = layer.opacity ?? 1;
+            ctx.fillStyle = layer.fill || '#000000';
+            ctx.fillRect(layer.x * scaleX, layer.y * scaleY, layer.width * scaleX, layer.height * scaleY);
+            ctx.restore();
+        };
+
+        const renderFrame = () => {
+            ctx.clearRect(0, 0, outputWidth, outputHeight);
+            ctx.fillStyle = activePage.backgroundColor || '#000000';
+            ctx.fillRect(0, 0, outputWidth, outputHeight);
+
+            ctx.save();
+            ctx.globalAlpha = clipLayer.opacity ?? 1;
+            ctx.drawImage(
+                clipVideo,
+                clipLayer.x * scaleX,
+                clipLayer.y * scaleY,
+                clipLayer.width * scaleX,
+                clipLayer.height * scaleY
+            );
+            ctx.restore();
+
+            activePage.layers.forEach((layer) => {
+                if (!layer.visible || layer.id === clipLayer.id) return;
+                if (layer.type === LayerType.TEXT) {
+                    drawTextLayer(layer as TextLayer);
+                } else if (layer.type === LayerType.RECT) {
+                    drawShapeLayer(layer as ShapeLayer);
+                }
+            });
+        };
+
+        renderFrame();
+        await audioContext.resume();
+
+        await new Promise<void>((resolve, reject) => {
+            let stopped = false;
+            let rafId = 0;
+            const stopRecording = () => {
+                if (stopped) return;
+                stopped = true;
+                if (rafId) cancelAnimationFrame(rafId);
+                clipVideo.pause();
+                if (recorder.state === 'recording') {
+                    recorder.stop();
+                }
+            };
+
+            recorder.onerror = (event: any) => {
+                stopRecording();
+                reject(event?.error || new Error('Motion AI recorder failed.'));
+            };
+
+            recorder.onstop = async () => {
+                try {
+                    const blob = new Blob(chunks, { type: mimeType });
+
+                    if (fileHandle) {
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(blob);
+                        await writable.close();
+                    } else {
+                        const file = new File([blob], finalFilename, { type: mimeType });
+                        const url = URL.createObjectURL(file);
+                        const link = document.createElement('a');
+                        link.style.display = 'none';
+                        link.download = finalFilename;
+                        link.href = url;
+                        document.body.appendChild(link);
+                        link.dispatchEvent(new MouseEvent('click', {
+                            bubbles: true,
+                            cancelable: true,
+                            view: window
+                        }));
+                        setTimeout(() => {
+                            document.body.removeChild(link);
+                            window.URL.revokeObjectURL(url);
+                        }, 60000);
+                    }
+
+                    setIsExporting(false);
+                    setStatusText('');
+                    onExportComplete?.(config);
+                    resolve();
+                } catch (error) {
+                    reject(error);
+                } finally {
+                    clipVideo.pause();
+                    clipVideo.src = '';
+                    clipVideo.load();
+                    if (audioContext.state !== 'closed') {
+                        await audioContext.close();
+                    }
+                }
+            };
+
+            const monitorFrame = () => {
+                if (stopped) return;
+                renderFrame();
+                const elapsedMs = Math.min(clipDurationMs, Math.round((clipVideo.currentTime || 0) * 1000));
+                setExportProgress(Math.min(100, (elapsedMs / clipDurationMs) * 100));
+                if (elapsedMs >= clipDurationMs || clipVideo.ended) {
+                    stopRecording();
+                    return;
+                }
+                rafId = requestAnimationFrame(monitorFrame);
+            };
+
+            setStatusText('Recording Motion AI...');
+            setExportProgress(0);
+            recorder.start(250);
+            clipVideo.currentTime = 0;
+            clipVideo.play().then(() => {
+                rafId = requestAnimationFrame(monitorFrame);
+            }).catch((error) => {
+                stopRecording();
+                reject(error);
+            });
+        });
+    }, [activePage, onExportComplete, setExportProgress, setStatusText]);
+
     const executeExport = async (config: ExportConfig) => {
         if (!stageRef.current) {
             alert("Internal Error: Stage reference is missing. Please reload the page.");
@@ -508,16 +753,7 @@ export const useExport = ({
             const seekLayers = updateVideoState(activePage.layers, false, true);
             updateActivePage({ layers: seekLayers });
 
-            await new Promise(resolve => setTimeout(resolve, 2000));
             console.log('✅ Videos synchronized');
-
-            const canvas = stage.container().querySelector('canvas');
-            if (!canvas) throw new Error("Canvas missing");
-
-            // Capture stream
-            const stream = canvas.captureStream(60);
-            const exportAudio = await prepareExportAudio(videoLayers, config.duration);
-            exportAudio?.stream.getAudioTracks().forEach((track) => stream.addTrack(track));
 
             // Vadeo exports should stay MP4-first for compatibility with the user's workflow.
             if (!MediaRecorder.isTypeSupported('video/mp4')) {
@@ -537,6 +773,42 @@ export const useExport = ({
             }]);
 
             console.log('📹 Using MIME type:', mimeType);
+
+            const singleMotionAiLayer = videoLayers.length === 1
+                ? videoLayers[0]
+                : null;
+            const isDedicatedMotionAiExport = Boolean(
+                singleMotionAiLayer &&
+                singleMotionAiLayer.name === 'Motion AI Clip' &&
+                !singleMotionAiLayer.keyframes?.some((keyframe) => typeof keyframe.currentTime === 'number')
+            );
+
+            if (isDedicatedMotionAiExport && singleMotionAiLayer) {
+                await exportSingleMotionAiClip({
+                    clipLayer: singleMotionAiLayer,
+                    config,
+                    fileHandle,
+                    finalFilename,
+                    mimeType,
+                });
+                setEditorState(prev => ({
+                    ...prev,
+                    playheadTime: previousSelection.playheadTime,
+                    isPlaying: previousSelection.isPlaying,
+                    selectedLayerId: previousSelection.selectedLayerId,
+                    selectedLayerIds: previousSelection.selectedLayerIds,
+                    selectedKeyframe: previousSelection.selectedKeyframe
+                }));
+                return;
+            }
+
+            const canvas = stage.container().querySelector('canvas');
+            if (!canvas) throw new Error("Canvas missing");
+
+            // Capture stream
+            const stream = canvas.captureStream(60);
+            const exportAudio = await prepareExportAudio(videoLayers, config.duration);
+            exportAudio?.stream.getAudioTracks().forEach((track) => stream.addTrack(track));
 
             const recorder = new MediaRecorder(stream, {
                 mimeType,

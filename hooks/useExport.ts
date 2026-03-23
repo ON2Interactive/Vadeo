@@ -267,68 +267,6 @@ export const useExport = ({
         });
     };
 
-    const waitForCanvasVideosToStart = useCallback(async (stage: Konva.Stage, videoLayers: ImageLayer[]) => {
-        if (videoLayers.length === 0) return;
-
-        const getNodeVideo = (layerId: string): HTMLVideoElement | null => {
-            const node = stage.findOne(`#${layerId}`) as Konva.Image | undefined;
-            const media = node?.image?.();
-            return media instanceof HTMLVideoElement ? media : null;
-        };
-
-        const deadline = performance.now() + 2500;
-
-        await new Promise<void>((resolve) => {
-            const poll = () => {
-                const readyVideos = videoLayers
-                    .map((layer) => getNodeVideo(layer.id))
-                    .filter((video): video is HTMLVideoElement => Boolean(video));
-
-                if (readyVideos.length === 0) {
-                    if (performance.now() >= deadline) {
-                        resolve();
-                        return;
-                    }
-                    requestAnimationFrame(poll);
-                    return;
-                }
-
-                const allAdvanced = readyVideos.every((video) => {
-                    const activelyPlaying = !video.paused && !video.ended;
-                    return activelyPlaying;
-                });
-
-                if (allAdvanced || performance.now() >= deadline) {
-                    const supportsFrameCallback = readyVideos.every(
-                        (video) => typeof (video as any).requestVideoFrameCallback === 'function'
-                    );
-
-                    if (!supportsFrameCallback) {
-                        resolve();
-                        return;
-                    }
-
-                    let remaining = readyVideos.length;
-                    const done = () => {
-                        remaining -= 1;
-                        if (remaining <= 0) resolve();
-                    };
-
-                    readyVideos.forEach((video) => {
-                        (video as any).requestVideoFrameCallback(() => {
-                            done();
-                        });
-                    });
-                    return;
-                }
-
-                requestAnimationFrame(poll);
-            };
-
-            poll();
-        });
-    }, []);
-
     const exportSingleMotionAiClip = useCallback(async ({
         clipLayer,
         config,
@@ -943,57 +881,13 @@ export const useExport = ({
                 requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
             });
 
-            await waitForCanvasVideosToStart(stage, videoLayers);
-
             let isRecording = true;
             const duration = config.duration;
             let rafId = 0;
             const recordingStart = performance.now();
-            const getNodeVideo = (layerId: string): HTMLVideoElement | null => {
-                const node = stage.findOne(`#${layerId}`) as Konva.Image | undefined;
-                const media = node?.image?.();
-                return media instanceof HTMLVideoElement ? media : null;
-            };
-
-            const primaryCanvasVideo = videoLayers.length > 0 ? getNodeVideo(videoLayers[0].id) : null;
-            const shouldFollowPrimaryVideoClock = Boolean(
-                primaryCanvasVideo &&
-                videoLayers.length === 1 &&
-                !videoLayers[0].keyframes?.some((keyframe) => typeof keyframe.currentTime === 'number')
-            );
 
             // CRITICAL: use timeslice to prevent chunk loss
             recorder.start(250);
-
-            if (shouldFollowPrimaryVideoClock && primaryCanvasVideo) {
-                const monitorPrimaryVideo = () => {
-                    if (!isRecording) return;
-
-                    const elapsed = Math.min(duration, Math.max(0, (primaryCanvasVideo.currentTime || 0) * 1000));
-                    setExportProgress(Math.min(100, (elapsed / duration) * 100));
-
-                    if (elapsed >= duration || primaryCanvasVideo.ended) {
-                        isRecording = false;
-                        if (recorder.state === 'recording') {
-                            recorder.stop();
-                        }
-                        return;
-                    }
-
-                    if (typeof (primaryCanvasVideo as any).requestVideoFrameCallback === 'function') {
-                        (primaryCanvasVideo as any).requestVideoFrameCallback(() => monitorPrimaryVideo());
-                    } else {
-                        rafId = requestAnimationFrame(monitorPrimaryVideo);
-                    }
-                };
-
-                if (typeof (primaryCanvasVideo as any).requestVideoFrameCallback === 'function') {
-                    (primaryCanvasVideo as any).requestVideoFrameCallback(() => monitorPrimaryVideo());
-                } else {
-                    rafId = requestAnimationFrame(monitorPrimaryVideo);
-                }
-                return;
-            }
 
             const forceRedraw = () => {
                 if (!isRecording) return;
@@ -1003,24 +897,10 @@ export const useExport = ({
                 } else {
                     stage.draw();
                 }
-                requestAnimationFrame(forceRedraw);
+                rafId = requestAnimationFrame(forceRedraw);
             };
 
-            if (primaryCanvasVideo && typeof (primaryCanvasVideo as any).requestVideoFrameCallback === 'function') {
-                const drawOnVideoFrame = () => {
-                    if (!isRecording) return;
-                    const layers = stage.children;
-                    if (layers) {
-                        layers.forEach((layer: any) => layer.draw());
-                    } else {
-                        stage.draw();
-                    }
-                    (primaryCanvasVideo as any).requestVideoFrameCallback(() => drawOnVideoFrame());
-                };
-                (primaryCanvasVideo as any).requestVideoFrameCallback(() => drawOnVideoFrame());
-            } else {
-                requestAnimationFrame(forceRedraw);
-            }
+            rafId = requestAnimationFrame(forceRedraw);
 
             const advancePlayback = () => {
                 if (!isRecording) return;

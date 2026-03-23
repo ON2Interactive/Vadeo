@@ -93,6 +93,28 @@ const buildPersistedEditorSnapshot = (editorState: EditorState) => JSON.stringif
   pan: editorState.pan,
   isPro: editorState.isPro
 });
+const applyPlaybackTimeToLayer = (layer: Layer, playheadMs: number): Layer => {
+  if (layer.type !== LayerType.IMAGE || layer.mediaType !== 'video') {
+    return layer;
+  }
+
+  const hasCurrentTimeKeyframes = Boolean(
+    layer.keyframes?.some((keyframe) => typeof keyframe.currentTime === 'number')
+  );
+
+  if (hasCurrentTimeKeyframes) {
+    return layer;
+  }
+
+  const clipStartMs = layer.clipStartMs ?? 0;
+  const clipEndMs = layer.clipEndMs ?? Number.POSITIVE_INFINITY;
+  const localMs = Math.max(0, Math.min(Math.max(playheadMs - clipStartMs, 0), clipEndMs - clipStartMs));
+
+  return {
+    ...layer,
+    currentTime: localMs / 1000
+  };
+};
 
 type PickerCapableInput = HTMLInputElement & {
   showPicker?: () => void;
@@ -3033,7 +3055,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
                     const shouldInterpolate = editorState.isPlaying || editorState.playheadTime > 0 || isKeyframeSelected;
 
                     const displayLayer = shouldInterpolate
-                      ? TimelineEngine.getInterpolatedLayer(layer, targetTime)
+                      ? applyPlaybackTimeToLayer(TimelineEngine.getInterpolatedLayer(layer, targetTime), targetTime)
                       : layer;
 
                     return (<CanvasElement
@@ -3069,7 +3091,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
               : editorState.playheadTime;
 
             if (editorState.isPlaying || editorState.playheadTime > 0 || isKeyframeSelected) {
-              return TimelineEngine.getInterpolatedLayer(layer, targetTime);
+              return applyPlaybackTimeToLayer(TimelineEngine.getInterpolatedLayer(layer, targetTime), targetTime);
             }
             return layer;
           })()}

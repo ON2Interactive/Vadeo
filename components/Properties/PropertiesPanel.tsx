@@ -200,6 +200,86 @@ const InputField = ({ label, value, onChange, type = "number", step = "1", min, 
   );
 };
 
+const SliderField = ({
+  label,
+  value,
+  onChange,
+  min,
+  max,
+  step = 1,
+  onAddKeyframe
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  min: number;
+  max: number;
+  step?: number;
+  onAddKeyframe?: () => void;
+}) => {
+  const [localValue, setLocalValue] = useState(value);
+  const isSliding = useRef(false);
+
+  useEffect(() => {
+    if (!isSliding.current) {
+      setLocalValue(value);
+    }
+  }, [value]);
+
+  const commit = (nextValue: number) => {
+    const clamped = Math.max(min, Math.min(max, nextValue));
+    setLocalValue(clamped);
+    onChange(clamped);
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <label className="text-[10px] text-zinc-500 font-semibold">{label}</label>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-mono text-zinc-300">{Math.round(localValue)}</span>
+          {onAddKeyframe && (
+            <button
+              onClick={onAddKeyframe}
+              className="p-1 hover:text-blue-500 text-zinc-600 transition-colors"
+              title="Add keyframe here"
+            >
+              <Zap size={10} fill="currentColor" />
+            </button>
+          )}
+        </div>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={localValue}
+        onMouseDown={() => {
+          isSliding.current = true;
+        }}
+        onMouseUp={() => {
+          isSliding.current = false;
+          commit(localValue);
+        }}
+        onTouchStart={() => {
+          isSliding.current = true;
+        }}
+        onTouchEnd={() => {
+          isSliding.current = false;
+          commit(localValue);
+        }}
+        onChange={(e) => {
+          const nextValue = parseFloat(e.target.value);
+          setLocalValue(nextValue);
+          onChange(nextValue);
+        }}
+        className="vadeo-slider w-full appearance-none bg-transparent"
+      />
+    </div>
+  );
+};
+
 const FontSizeInput = ({ value, onChange }: { value: number, onChange: (v: number) => void }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [localValue, setLocalValue] = useState(value);
@@ -337,6 +417,37 @@ const PropertiesPanel: React.FC<Props> = ({
 
   return (
     <div className="w-80 bg-[#121214] border-l border-zinc-800 flex flex-col overflow-y-auto no-scrollbar shadow-2xl">
+      <style>{`
+        .vadeo-slider::-webkit-slider-runnable-track {
+          height: 1px;
+          background: rgba(113, 113, 122, 0.8);
+          border-radius: 9999px;
+        }
+        .vadeo-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 12px;
+          height: 12px;
+          margin-top: -5.5px;
+          border-radius: 9999px;
+          background: #ffffff;
+          border: 1px solid rgba(255, 255, 255, 0.9);
+          box-shadow: 0 0 0 1px rgba(24, 24, 27, 0.8);
+        }
+        .vadeo-slider::-moz-range-track {
+          height: 1px;
+          background: rgba(113, 113, 122, 0.8);
+          border-radius: 9999px;
+        }
+        .vadeo-slider::-moz-range-thumb {
+          width: 12px;
+          height: 12px;
+          border-radius: 9999px;
+          background: #ffffff;
+          border: 1px solid rgba(255, 255, 255, 0.9);
+          box-shadow: 0 0 0 1px rgba(24, 24, 27, 0.8);
+        }
+      `}</style>
       <ScenesSection pages={pages} activePageId={activePageId} onPageSelect={onPageAction.select} onAddPage={onPageAction.add} onDuplicatePage={onPageAction.duplicate} onDeletePage={onPageAction.delete} onRenamePage={onPageAction.rename} />
 
       <div className="p-4 space-y-6">
@@ -348,8 +459,31 @@ const PropertiesPanel: React.FC<Props> = ({
               </h3>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-x-4 gap-y-4">
-                  <InputField label="X" value={Math.round(selectedLayer.x)} onChange={(v: number) => handleLayerChange({ x: v })} onAddKeyframe={() => onAddKeyframe?.(selectedLayer.id)} />
-                  <InputField label="Y" value={Math.round(selectedLayer.y)} onChange={(v: number) => handleLayerChange({ y: v })} onAddKeyframe={() => onAddKeyframe?.(selectedLayer.id)} />
+                  {selectedLayer.type === LayerType.IMAGE ? (
+                    <>
+                      <SliderField
+                        label="X"
+                        value={Math.round(selectedLayer.x)}
+                        min={-Math.round((activePage?.width || 0) * 0.5)}
+                        max={Math.round((activePage?.width || 0) * 0.5)}
+                        onChange={(v: number) => handleLayerChange({ x: v })}
+                        onAddKeyframe={() => onAddKeyframe?.(selectedLayer.id)}
+                      />
+                      <SliderField
+                        label="Y"
+                        value={Math.round(selectedLayer.y)}
+                        min={-Math.round((activePage?.height || 0) * 0.5)}
+                        max={Math.round((activePage?.height || 0) * 0.5)}
+                        onChange={(v: number) => handleLayerChange({ y: v })}
+                        onAddKeyframe={() => onAddKeyframe?.(selectedLayer.id)}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <InputField label="X" value={Math.round(selectedLayer.x)} onChange={(v: number) => handleLayerChange({ x: v })} onAddKeyframe={() => onAddKeyframe?.(selectedLayer.id)} />
+                      <InputField label="Y" value={Math.round(selectedLayer.y)} onChange={(v: number) => handleLayerChange({ y: v })} onAddKeyframe={() => onAddKeyframe?.(selectedLayer.id)} />
+                    </>
+                  )}
                   <InputField label="Width" value={Math.round(selectedLayer.width)} onChange={(v: number) => handleLayerChange({ width: v })} onAddKeyframe={() => onAddKeyframe?.(selectedLayer.id)} />
                   <InputField label="Height" value={Math.round(selectedLayer.height)} onChange={(v: number) => handleLayerChange({ height: v })} onAddKeyframe={() => onAddKeyframe?.(selectedLayer.id)} />
                 </div>

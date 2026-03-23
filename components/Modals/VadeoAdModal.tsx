@@ -636,7 +636,7 @@ const VadeoAdModal: React.FC<Props> = ({
           <div className="space-y-3">
             <label className="text-xs text-zinc-500">Duration</label>
             <input
-              value="15s (3 x 5s clips)"
+              value="15s"
               disabled
               className={`${inputClass} opacity-70`}
             />

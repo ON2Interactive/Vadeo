@@ -157,7 +157,15 @@ export const useExport = ({
                         const endMs = layer.clipEndMs ?? exportDurationMs;
                         const shouldBeActive = playheadMs >= startMs && playheadMs <= endMs;
                         const opacity = Math.max(0, Math.min(1, getInterpolatedLayerValue(layer, 'opacity', playheadMs)));
-                        const localTime = Math.max(0, getInterpolatedLayerValue(layer, 'currentTime', playheadMs));
+                        const hasCurrentTimeKeyframes = Boolean(
+                            layer.keyframes?.some((keyframe) => typeof keyframe.currentTime === 'number')
+                        );
+                        const localTime = Math.max(
+                            0,
+                            hasCurrentTimeKeyframes
+                                ? getInterpolatedLayerValue(layer, 'currentTime', playheadMs)
+                                : Math.max(0, playheadMs - startMs) / 1000
+                        );
                         const targetVolume = shouldBeActive ? (layer.volume ?? 1) * opacity : 0;
 
                         gainNode.gain.value = targetVolume;

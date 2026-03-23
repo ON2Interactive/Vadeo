@@ -351,6 +351,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
   const [activeGrid, setActiveGrid] = useState<GridType>('none');
   const [showGridMenu, setShowGridMenu] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
+  const [isMotionPreviewPlaying, setIsMotionPreviewPlaying] = useState(false);
 
   // Export States
 
@@ -382,6 +383,51 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
     setSettingsError(null);
     setShowSettingsModal(true);
   };
+
+  const handleToggleMotionPreview = useCallback(() => {
+    setEditorState((prev) => {
+      const activePage = prev.pages.find((page) => page.id === prev.activePageId);
+      if (!activePage) {
+        return prev;
+      }
+
+      const hasVideoLayers = activePage.layers.some(
+        (layer) => layer.type === LayerType.IMAGE && layer.mediaType === 'video'
+      );
+      if (!hasVideoLayers) {
+        return prev;
+      }
+
+      const nextPlaying = !isMotionPreviewPlaying;
+      const updatedPages = prev.pages.map((page) => {
+        if (page.id !== prev.activePageId) {
+          return page;
+        }
+
+        return {
+          ...page,
+          layers: page.layers.map((layer) => {
+            if (layer.type !== LayerType.IMAGE || layer.mediaType !== 'video') {
+              return layer;
+            }
+
+            return {
+              ...layer,
+              playing: nextPlaying,
+              currentTime: nextPlaying ? 0 : layer.currentTime
+            };
+          })
+        };
+      });
+
+      return {
+        ...prev,
+        pages: updatedPages
+      };
+    });
+
+    setIsMotionPreviewPlaying((prev) => !prev);
+  }, [isMotionPreviewPlaying, setEditorState]);
 
   const handlePlanSelectFromSettings = (plan: 'starter' | 'standard' | 'premium') => {
     setSettingsError(null);
@@ -761,6 +807,55 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
 
     return Math.max(DEFAULT_TIMELINE_DURATION_MS, maxVideoDurationMs, maxKeyframeTimeMs);
   }, [activePage.layers]);
+
+  const motionPreviewDurationMs = useMemo(() => {
+    return activePage.layers.reduce((maxDuration, layer) => {
+      if (layer.type !== LayerType.IMAGE || layer.mediaType !== 'video') {
+        return maxDuration;
+      }
+
+      return Math.max(maxDuration, Math.round((layer.duration || 0) * 1000));
+    }, 0);
+  }, [activePage.layers]);
+
+  useEffect(() => {
+    if (!isMotionPreviewPlaying || motionPreviewDurationMs <= 0) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setEditorState((prev) => ({
+        ...prev,
+        pages: prev.pages.map((page) => {
+          if (page.id !== prev.activePageId) {
+            return page;
+          }
+
+          return {
+            ...page,
+            layers: page.layers.map((layer) => {
+              if (layer.type !== LayerType.IMAGE || layer.mediaType !== 'video') {
+                return layer;
+              }
+
+              return {
+                ...layer,
+                playing: false,
+                currentTime: 0
+              };
+            })
+          };
+        })
+      }));
+      setIsMotionPreviewPlaying(false);
+    }, motionPreviewDurationMs + 100);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [isMotionPreviewPlaying, motionPreviewDurationMs, setEditorState]);
+
+  useEffect(() => {
+    setIsMotionPreviewPlaying(false);
+  }, [editorState.activePageId]);
 
   const syncCanvasToAspectRatio = useCallback((ratio: AspectRatio) => {
     const targetDims = ASPECT_RATIOS[ratio];
@@ -2930,6 +3025,8 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
           })()}
           isPlaying={editorState.isPlaying}
           onTogglePlay={handleTogglePlay}
+          isMotionPreviewPlaying={isMotionPreviewPlaying}
+          onToggleMotionPreview={handleToggleMotionPreview}
           onUpdateLayer={updateLayer}
           onDuplicateLayer={duplicateLayer}
           onDeleteLayer={deleteLayer}

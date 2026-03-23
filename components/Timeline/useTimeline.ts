@@ -55,8 +55,36 @@ export const useTimeline = (editorState: EditorState, setEditorState: React.Disp
     const handleTogglePlay = useCallback(() => {
         setEditorState(prev => {
             const timelineDurationMs = getTimelineDurationMs(prev.pages, prev.activePageId);
-            const newTime = prev.playheadTime >= timelineDurationMs ? 0 : prev.playheadTime;
-            return { ...prev, isPlaying: !prev.isPlaying, playheadTime: newTime };
+            const shouldRestart = prev.playheadTime >= timelineDurationMs;
+            const nextIsPlaying = !prev.isPlaying;
+            const newTime = shouldRestart ? 0 : prev.playheadTime;
+            const updatedPages = prev.pages.map((page) => {
+                if (page.id !== prev.activePageId) {
+                    return page;
+                }
+
+                return {
+                    ...page,
+                    layers: page.layers.map((layer) => {
+                        if (layer.type !== LayerType.IMAGE || layer.mediaType !== 'video') {
+                            return layer;
+                        }
+
+                        return {
+                            ...layer,
+                            playing: nextIsPlaying,
+                            currentTime: shouldRestart ? 0 : layer.currentTime
+                        };
+                    })
+                };
+            });
+
+            return {
+                ...prev,
+                pages: updatedPages,
+                isPlaying: nextIsPlaying,
+                playheadTime: newTime
+            };
         });
     }, [setEditorState]);
 

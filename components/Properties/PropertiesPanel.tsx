@@ -18,6 +18,8 @@ interface Props {
   selectedLayer: Layer | null;
   isPlaying?: boolean;
   onTogglePlay?: () => void;
+  isMotionPreviewPlaying?: boolean;
+  onToggleMotionPreview?: () => void;
   onUpdateLayer: (id: string, attrs: Partial<Layer>) => void;
   onDuplicateLayer: (id: string) => void;
   onUpdatePage: (attrs: Partial<Page>) => void;
@@ -386,7 +388,7 @@ const FontSizeInput = ({ value, onChange }: { value: number, onChange: (v: numbe
 };
 
 const PropertiesPanel: React.FC<Props> = ({
-  pages, activePageId, selectedLayer, isPlaying, onTogglePlay, onUpdateLayer, onDuplicateLayer, onDeleteLayer,
+  pages, activePageId, selectedLayer, isPlaying, onTogglePlay, isMotionPreviewPlaying, onToggleMotionPreview, onUpdateLayer, onDuplicateLayer, onDeleteLayer,
   onUpdatePage, onSelectLayer, onReorderLayers, onPageAction, onGenerateVideo,
   onMask, onUnmask, selectedLayerIds, onAddKeyframe
 }) => {
@@ -683,21 +685,19 @@ const PropertiesPanel: React.FC<Props> = ({
                 <Play size={14} className="text-blue-500" />
                 <h3 className="text-xs font-bold text-zinc-200 tracking-wider">Motion Preview</h3>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center">
                 <button
-                  onClick={onTogglePlay}
-                  className={`flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-xs font-bold transition-all active:scale-95 ${
-                    isPlaying
+                  onClick={onToggleMotionPreview}
+                  className={`p-1.5 rounded-full shadow-lg active:scale-95 transition-all ${
+                    isMotionPreviewPlaying
                       ? 'bg-zinc-800 text-zinc-200 border border-zinc-700 hover:border-zinc-500'
-                      : 'bg-blue-600 text-white hover:bg-blue-500'
+                      : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/20'
                   }`}
+                  title={isMotionPreviewPlaying ? 'Pause preview' : 'Play preview'}
+                  aria-label={isMotionPreviewPlaying ? 'Pause preview' : 'Play preview'}
                 >
-                  {isPlaying ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
-                  {isPlaying ? 'Pause' : 'Play'}
+                  {isMotionPreviewPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" className="ml-0.5" />}
                 </button>
-                <span className="text-[11px] text-zinc-500">
-                  Preview the Motion sequence without using the timeline controls.
-                </span>
               </div>
             </section>
 

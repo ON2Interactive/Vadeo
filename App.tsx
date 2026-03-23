@@ -131,6 +131,9 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
   const [isNewProject, setIsNewProject] = useState(true);
   const [remainingGenerations, setRemainingGenerations] = useState<number>(0);
   const [usedGenerations, setUsedGenerations] = useState<number>(0);
+  const [remainingMotionAiRuns, setRemainingMotionAiRuns] = useState<number>(0);
+  const [usedMotionAiRuns, setUsedMotionAiRuns] = useState<number>(0);
+  const [motionAiLimit, setMotionAiLimit] = useState<number>(0);
   const [trialMotionDownloadsUsed, setTrialMotionDownloadsUsed] = useState<number>(0);
   const [accountName, setAccountName] = useState<string>('Vadeo User');
   const isTrialActive = trialState?.status === 'active';
@@ -204,6 +207,15 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
           setUsedGenerations(getGenerationCountForUser(user.id));
           setRemainingGenerations(getRemainingGenerations(user.id, fallbackPlan));
         }
+        if (accessState?.motionAiUsage) {
+          setUsedMotionAiRuns(accessState.motionAiUsage.used || 0);
+          setRemainingMotionAiRuns(accessState.motionAiUsage.remaining || 0);
+          setMotionAiLimit(accessState.motionAiUsage.limit || 0);
+        } else {
+          setUsedMotionAiRuns(0);
+          setRemainingMotionAiRuns(0);
+          setMotionAiLimit(0);
+        }
       } else {
         setUserId(null);
         setIsAdminUser(false);
@@ -211,6 +223,9 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
         setCurrentPlan(DEV_BYPASS_CREDITS ? 'premium' : 'none');
         setUsedGenerations(0);
         setRemainingGenerations(0);
+        setUsedMotionAiRuns(0);
+        setRemainingMotionAiRuns(0);
+        setMotionAiLimit(0);
         setTrialMotionDownloadsUsed(0);
       }
     });
@@ -1602,12 +1617,26 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
   };
 
   const handleStartCreator = (aspectRatio: AspectRatio, duration: number, websiteUrl: string, brief: string, headline: string, cta: string, files: File[], audioEnabled: boolean, audioType: 'auto' | 'dialogue' | 'sound-effects' | 'ambient') => {
+    if (!isAdminUser && currentPlan !== 'standard' && currentPlan !== 'premium') {
+      alert('Motion AI is available on Standard and Premium.');
+      setShowCreditsModal(true);
+      return;
+    }
+
+    if (!isAdminUser && remainingMotionAiRuns <= 0) {
+      setSettingsError('Motion AI usage is depleted for your current plan. Upgrade or renew to continue.');
+      setShowSettingsModal(true);
+      return;
+    }
+
     syncCanvasToAspectRatio(aspectRatio);
     setShowVadeoAdModal(false);
+    const motionAiResolution = isAdminUser || currentPlan === 'premium' ? '4k' : '1080p';
 
     const summaryParts = [
       `Motion AI workspace prepared for ${aspectRatio}.`,
       `${duration}s selected.`,
+      `Plan output: ${motionAiResolution}.`,
       files.length > 0 ? `${files.length} image${files.length > 1 ? 's' : ''} attached.` : null,
       websiteUrl ? 'Website captured.' : null,
       audioEnabled ? `Audio: ${audioType}.` : 'Audio disabled.',
@@ -2233,8 +2262,8 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
               : isTrialExpired
                 ? `Choose a paid plan to continue inside Vadeo. ${remainingTrialMotionDownloads} of ${TRIAL_MOTION_DOWNLOAD_LIMIT} Motion downloads remaining.`
               : currentPlan === 'premium' || currentPlan === 'standard'
-                ? `${usedGenerations} of ${PLAN_GENERATION_LIMIT} generations used. ${remainingGenerations} remaining.`
-              : currentPlan === 'starter'
+                ? `${usedGenerations} of ${PLAN_GENERATION_LIMIT} generations used. ${remainingGenerations} remaining. Motion AI: ${usedMotionAiRuns} of ${motionAiLimit} used. ${remainingMotionAiRuns} remaining.`
+                : currentPlan === 'starter'
                 ? 'Starter is active. Generation tools are disabled on this plan.'
                 : 'Choose a plan to unlock editor access and generation.'
         }

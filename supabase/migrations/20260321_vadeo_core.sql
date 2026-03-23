@@ -47,6 +47,7 @@ create table if not exists public.user_subscriptions (
 create table if not exists public.generation_usage (
   app_user_id text primary key references public.user_profiles(app_user_id) on delete cascade,
   successful_generations integer not null default 0,
+  motion_ai_jobs_used integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

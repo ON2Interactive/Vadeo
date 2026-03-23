@@ -1,11 +1,15 @@
 import {
   ensureUserRecords,
+  getMotionAiLimit,
   getPlanFromSubscription,
   getRemainingGenerations,
+  getRemainingMotionAi,
   getSupabaseAdmin,
   getTrialStateFromRow,
   mapPriceIdToPlan,
   PLAN_GENERATION_LIMIT,
+  PREMIUM_MOTION_AI_LIMIT,
+  STANDARD_MOTION_AI_LIMIT,
   requireSession,
   TRIAL_DURATION_MS,
 } from '../lib/server/supabaseAdmin.js';
@@ -47,6 +51,7 @@ export default async function handler(req, res) {
 
       const plan = getPlanFromSubscription(subscription);
       const used = usage?.successful_generations || 0;
+      const motionAiUsed = usage?.motion_ai_jobs_used || 0;
 
       res.status(200).json({
         profile,
@@ -56,6 +61,13 @@ export default async function handler(req, res) {
           used,
           remaining: getRemainingGenerations(plan, used),
           limit: PLAN_GENERATION_LIMIT,
+        },
+        motionAiUsage: {
+          used: motionAiUsed,
+          remaining: getRemainingMotionAi(plan, motionAiUsed),
+          limit: getMotionAiLimit(plan),
+          standardLimit: STANDARD_MOTION_AI_LIMIT,
+          premiumLimit: PREMIUM_MOTION_AI_LIMIT,
         },
       });
       return;
@@ -237,6 +249,61 @@ export default async function handler(req, res) {
         used: currentUsed,
         remaining: getRemainingGenerations(plan, currentUsed),
         limit: PLAN_GENERATION_LIMIT,
+      });
+      return;
+    }
+
+    if (scope === 'motion-ai') {
+      const [{ data: subscription }, { data: usage }] = await Promise.all([
+        supabase.from('user_subscriptions').select('*').eq('app_user_id', session.id).single(),
+        supabase.from('generation_usage').select('*').eq('app_user_id', session.id).single(),
+      ]);
+
+      const plan = getPlanFromSubscription(subscription);
+      const currentUsed = usage?.motion_ai_jobs_used || 0;
+
+      if (req.method === 'POST') {
+        if (plan !== 'standard' && plan !== 'premium') {
+          res.status(200).json({
+            used: currentUsed,
+            remaining: 0,
+            limit: getMotionAiLimit(plan),
+            standardLimit: STANDARD_MOTION_AI_LIMIT,
+            premiumLimit: PREMIUM_MOTION_AI_LIMIT,
+          });
+          return;
+        }
+
+        const nextUsed = currentUsed + 1;
+        const { data, error } = await supabase
+          .from('generation_usage')
+          .update({ motion_ai_jobs_used: nextUsed })
+          .eq('app_user_id', session.id)
+          .select('*')
+          .single();
+        if (error) throw error;
+
+        res.status(200).json({
+          used: data.motion_ai_jobs_used,
+          remaining: getRemainingMotionAi(plan, data.motion_ai_jobs_used),
+          limit: getMotionAiLimit(plan),
+          standardLimit: STANDARD_MOTION_AI_LIMIT,
+          premiumLimit: PREMIUM_MOTION_AI_LIMIT,
+        });
+        return;
+      }
+
+      if (req.method !== 'GET') {
+        res.status(405).json({ error: 'Method Not Allowed' });
+        return;
+      }
+
+      res.status(200).json({
+        used: currentUsed,
+        remaining: getRemainingMotionAi(plan, currentUsed),
+        limit: getMotionAiLimit(plan),
+        standardLimit: STANDARD_MOTION_AI_LIMIT,
+        premiumLimit: PREMIUM_MOTION_AI_LIMIT,
       });
       return;
     }

@@ -23,6 +23,17 @@ export type TrialState = {
   motionDownloadsUsed?: number;
 };
 
+export type UsageState = {
+  used: number;
+  remaining: number;
+  limit: number;
+};
+
+export type MotionAiUsageState = UsageState & {
+  standardLimit?: number;
+  premiumLimit?: number;
+};
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
@@ -177,6 +188,7 @@ export const dbHelpers = {
       trial: TrialState;
       subscription: any;
       generationUsage: { used: number; remaining: number; limit: number };
+      motionAiUsage: MotionAiUsageState;
     }>(buildDataUrl('access'));
   },
 
@@ -332,6 +344,51 @@ export const dbHelpers = {
       return { data, error: null };
     } catch (error) {
       return { data: { used: 0, remaining: 0, limit: 20 }, error };
+    }
+  },
+
+  async getMotionAiUsage(userId: string) {
+    const session = await buildSession();
+    const user = session.user;
+    if (!user || user.id !== userId) {
+      return {
+        data: { used: 0, remaining: 0, limit: 0, standardLimit: 5, premiumLimit: 10 },
+        error: new Error('User is not authenticated')
+      };
+    }
+
+    try {
+      const data = await fetchJson<MotionAiUsageState>(buildDataUrl('motion-ai'));
+      return { data, error: null };
+    } catch (error) {
+      return {
+        data: { used: 0, remaining: 0, limit: 0, standardLimit: 5, premiumLimit: 10 },
+        error
+      };
+    }
+  },
+
+  async recordMotionAiSuccess(userId: string) {
+    const session = await buildSession();
+    const user = session.user;
+    if (!user || user.id !== userId) {
+      return {
+        data: { used: 0, remaining: 0, limit: 0, standardLimit: 5, premiumLimit: 10 },
+        error: new Error('User is not authenticated')
+      };
+    }
+
+    try {
+      const data = await fetchJson<MotionAiUsageState>(buildDataUrl('motion-ai'), {
+        method: 'POST',
+        body: JSON.stringify({ scope: 'motion-ai' }),
+      });
+      return { data, error: null };
+    } catch (error) {
+      return {
+        data: { used: 0, remaining: 0, limit: 0, standardLimit: 5, premiumLimit: 10 },
+        error
+      };
     }
   },
 

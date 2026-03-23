@@ -85,6 +85,7 @@ const GENERATED_AUDIO_FADE_MS = 1000;
 const DEFAULT_TIMELINE_DURATION_MS = 5000;
 const VEO_GENERATED_DURATION_SEC = 8;
 const TRIAL_MOTION_DOWNLOAD_LIMIT = 2;
+const getLastOpenedProjectStorageKey = (userId: string) => `vadeo_last_open_project_${userId}`;
 
 type PickerCapableInput = HTMLInputElement & {
   showPicker?: () => void;
@@ -260,6 +261,53 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
     }
   }, [initialProject]);
 
+  useEffect(() => {
+    if (!initialProject || !userId) return;
+    localStorage.setItem(getLastOpenedProjectStorageKey(userId), initialProject.id);
+  }, [initialProject, userId]);
+
+  useEffect(() => {
+    if (initialProject || !userId || hasAttemptedProjectRestore.current) return;
+    hasAttemptedProjectRestore.current = true;
+
+    const pathMatch = window.location.pathname.match(/^\/editor\/([^/?#]+)/);
+    const pathProjectId = pathMatch?.[1] ? decodeURIComponent(pathMatch[1]) : null;
+    const storedProjectId = localStorage.getItem(getLastOpenedProjectStorageKey(userId));
+    const targetProjectId = pathProjectId || storedProjectId;
+
+    if (!targetProjectId) return;
+
+    const restoreProject = async () => {
+      try {
+        const { data: project, error } = await dbHelpers.getProject(targetProjectId);
+        if (error || !project) return;
+
+        const loadedPages = project.editor_state?.pages || project.pages;
+        if (!loadedPages?.length) return;
+
+        setProjectId(project.id);
+        setProjectName(project.name || 'Untitled Project');
+        setEditorState(prev => ({
+          ...prev,
+          pages: loadedPages,
+          activePageId: loadedPages[0]?.id || DEFAULT_PAGE_ID,
+          selectedLayerId: null,
+          selectedLayerIds: [],
+          history: [loadedPages],
+          historyIndex: 0,
+          playheadTime: 0,
+          isPlaying: false,
+          selectedKeyframe: null
+        }));
+        setIsNewProject(false);
+      } catch (restoreError) {
+        console.error('Failed to restore last opened project:', restoreError);
+      }
+    };
+
+    void restoreProject();
+  }, [initialProject, userId]);
+
 
   // --- Editor State ---
   const [editorState, setEditorState] = useState<EditorState>(() => {
@@ -315,6 +363,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
   const videoUploadInputRef = useRef<HTMLInputElement>(null);
   const lastMousePos = useRef<Point>({ x: 0, y: 0 });
   const thumbnailTimeoutRef = useRef<number | null>(null);
+  const hasAttemptedProjectRestore = useRef(false);
 
   const activePage = editorState.pages.find(p => p.id === editorState.activePageId)!;
   const isMotionProject = activePage.layers.some((layer) => typeof layer.name === 'string' && layer.name.startsWith('Motion '));
@@ -409,10 +458,12 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
         if (result.data) {
           setProjectId(result.data.id);
           setIsNewProject(false);
+          localStorage.setItem(getLastOpenedProjectStorageKey(userId), result.data.id);
           console.log("Project created:", result.data.id);
         }
       } else {
         result = await dbHelpers.updateProject(projectId, projectName, editorState, thumbnail);
+        localStorage.setItem(getLastOpenedProjectStorageKey(userId), projectId);
         console.log("Project updated:", projectId);
       }
 
@@ -473,6 +524,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
             if (result.data?.id) {
               setProjectId(result.data.id);
               setIsNewProject(false);
+              localStorage.setItem(getLastOpenedProjectStorageKey(current.userId), result.data.id);
               console.log('Autosave created new project:', result.data.id);
             }
           } else {
@@ -483,6 +535,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
               thumbnail
             );
             if (result.error) throw result.error;
+            localStorage.setItem(getLastOpenedProjectStorageKey(current.userId), current.projectId);
           }
           setLastSaved(Date.now());
           console.log("Autosave complete.");
@@ -507,6 +560,9 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
 
         setProjectId(project.id);
         setProjectName(project.name);
+        if (userId) {
+          localStorage.setItem(getLastOpenedProjectStorageKey(userId), project.id);
+        }
 
         const loadedPages = project.editor_state?.pages;
         if (loadedPages) {
@@ -529,6 +585,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
       if (project) {
         setProjectId(project.id);
         setProjectName(project.name);
+        localStorage.setItem(getLastOpenedProjectStorageKey(userId), project.id);
 
         // Handle Supabase structure (editor_state)
         const loadedPages = project.editor_state?.pages || project.pages;

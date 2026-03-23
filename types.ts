@@ -49,6 +49,7 @@ export interface LayerKeyframe {
   width?: number;
   height?: number;
   fontSize?: number;   // for TextLayer
+  currentTime?: number;
 }
 
 export interface BaseLayer {
@@ -109,6 +110,8 @@ export interface ImageLayer extends BaseLayer {
   duration?: number; // Duration in seconds
   audioFadeInMs?: number;
   audioFadeOutMs?: number;
+  clipStartMs?: number;
+  clipEndMs?: number;
 }
 
 export type Layer = TextLayer | ShapeLayer | ImageLayer | GroupLayer;

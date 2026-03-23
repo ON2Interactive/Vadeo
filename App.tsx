@@ -1616,7 +1616,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
     }
   };
 
-  const handleStartCreator = (aspectRatio: AspectRatio, duration: number, websiteUrl: string, brief: string, headline: string, cta: string, files: File[], audioEnabled: boolean, audioType: 'auto' | 'dialogue' | 'sound-effects' | 'ambient') => {
+  const handleStartCreator = async (aspectRatio: AspectRatio, duration: number, websiteUrl: string, brief: string, headline: string, cta: string, files: File[], audioEnabled: boolean, audioType: 'auto' | 'dialogue' | 'sound-effects' | 'ambient') => {
     if (!isAdminUser && currentPlan !== 'standard' && currentPlan !== 'premium') {
       alert('Motion AI is available on Standard and Premium.');
       setShowCreditsModal(true);
@@ -1629,26 +1629,313 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
       return;
     }
 
-    syncCanvasToAspectRatio(aspectRatio);
-    setShowVadeoAdModal(false);
-    const motionAiResolution = isAdminUser || currentPlan === 'premium' ? '4k' : '1080p';
+    if (files.length === 0) {
+      alert('Upload at least one image to start Motion AI.');
+      return;
+    }
 
-    const summaryParts = [
-      `Motion AI workspace prepared for ${aspectRatio}.`,
-      `${duration}s selected.`,
-      `Plan output: ${motionAiResolution}.`,
-      files.length > 0 ? `${files.length} image${files.length > 1 ? 's' : ''} attached.` : null,
-      websiteUrl ? 'Website captured.' : null,
-      audioEnabled ? `Audio: ${audioType}.` : 'Audio disabled.',
-      brief ? 'Brief captured.' : null,
-      headline ? `Headline: ${headline}.` : null,
-      cta ? `CTA: ${cta}.` : null,
-    ].filter(Boolean);
+    const imageFiles = files.filter((file) => file.type.startsWith('image/')).slice(0, VADEO_MAX_AD_IMAGES);
+    if (imageFiles.length === 0) {
+      alert('Motion AI currently supports image uploads only.');
+      return;
+    }
 
-    setCreatorNotice(summaryParts.join(' '));
-    window.setTimeout(() => {
-      setCreatorNotice(null);
-    }, 4000);
+    const targetDims = ASPECT_RATIOS[aspectRatio];
+    if (!targetDims) {
+      alert('Unsupported aspect ratio for Motion AI.');
+      return;
+    }
+
+    setIsGenerating(true);
+    setStatusText('Preparing Motion AI generation...');
+
+    try {
+      syncCanvasToAspectRatio(aspectRatio);
+      const motionAiResolution = getGenerationResolution();
+
+      const imageInputs = await Promise.all(imageFiles.map(async (file) => {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = typeof reader.result === 'string' ? reader.result.split(',')[1] || '' : '';
+            if (!result) {
+              reject(new Error('Failed to read uploaded image.'));
+              return;
+            }
+            resolve(result);
+          };
+          reader.onerror = () => reject(new Error('Failed to read uploaded image.'));
+          reader.readAsDataURL(file);
+        });
+
+        return {
+          base64,
+          mimeType: file.type || 'image/png'
+        };
+      }));
+
+      const normalizedRatio = normalizeVeoAspectRatio(aspectRatio);
+      const promptContext = [
+        websiteUrl ? `Brand website: ${websiteUrl}.` : null,
+        headline ? `Headline: ${headline}.` : null,
+        cta ? `CTA: ${cta}.` : null,
+        brief ? `Creative brief: ${brief}.` : null,
+      ].filter(Boolean).join(' ');
+
+      const segmentPrompts = [
+        [
+          'Create the opening segment of a premium 15-second social video ad.',
+          'Focus on the hook, immediate visual interest, and product introduction.',
+          'Do not bake any text, subtitles, logos, lower thirds, or CTA buttons into the video because they will be added in post.',
+          promptContext
+        ].filter(Boolean).join(' '),
+        [
+          'Create the closing segment of a premium 15-second social video ad.',
+          'Focus on product payoff, benefit emphasis, and a strong closing hero moment that sets up the CTA.',
+          'Keep continuity with the opening segment in styling, subject, lighting, and motion language.',
+          'Do not bake any text, subtitles, logos, lower thirds, or CTA buttons into the video because they will be added in post.',
+          promptContext
+        ].filter(Boolean).join(' ')
+      ];
+
+      setStatusText('Generating Motion AI clip 1 of 2...');
+      const firstClipUrl = await aiService.generateVideoAdFromImages(
+        imageInputs,
+        segmentPrompts[0],
+        normalizedRatio,
+        motionAiResolution,
+        (status) => setStatusText(`Clip 1: ${status}`),
+        false,
+        audioEnabled,
+        audioType
+      );
+
+      setStatusText('Generating Motion AI clip 2 of 2...');
+      const secondClipUrl = await aiService.generateVideoAdFromImages(
+        imageInputs,
+        segmentPrompts[1],
+        normalizedRatio,
+        motionAiResolution,
+        (status) => setStatusText(`Clip 2: ${status}`),
+        false,
+        audioEnabled,
+        audioType
+      );
+
+      const buildCoverPlacement = (assetWidth: number, assetHeight: number) => {
+        const scale = Math.max(targetDims.w / assetWidth, targetDims.h / assetHeight);
+        const width = assetWidth * scale;
+        const height = assetHeight * scale;
+        return {
+          x: (targetDims.w - width) / 2,
+          y: (targetDims.h - height) / 2,
+          width,
+          height,
+        };
+      };
+
+      const loadVideoMetadata = (src: string) => new Promise<{ src: string; width: number; height: number; durationSec: number }>((resolve, reject) => {
+        const video = document.createElement('video');
+        video.preload = 'metadata';
+        video.onloadedmetadata = () => {
+          resolve({
+            src,
+            width: video.videoWidth || targetDims.w,
+            height: video.videoHeight || targetDims.h,
+            durationSec: video.duration || VEO_GENERATED_DURATION_SEC
+          });
+        };
+        video.onerror = () => reject(new Error('Failed to load generated Motion AI video.'));
+        video.src = src;
+      });
+
+      const [firstClip, secondClip] = await Promise.all([
+        loadVideoMetadata(firstClipUrl),
+        loadVideoMetadata(secondClipUrl)
+      ]);
+
+      const totalDurationMs = Math.max(15000, duration * 1000);
+      const firstStartMs = 0;
+      const firstEndMs = 8000;
+      const secondStartMs = 7000;
+      const secondEndMs = totalDurationMs;
+
+      const buildVideoLayer = (
+        name: string,
+        clip: { src: string; width: number; height: number; durationSec: number },
+        startMs: number,
+        endMs: number,
+        isFirst: boolean,
+      ): ImageLayer => {
+        const placement = buildCoverPlacement(clip.width, clip.height);
+        const clipDurationMs = Math.round((clip.durationSec || VEO_GENERATED_DURATION_SEC) * 1000);
+        const fadeMs = 1000;
+        return {
+          id: uuidv4(),
+          name,
+          type: LayerType.IMAGE,
+          x: placement.x,
+          y: placement.y,
+          width: placement.width,
+          height: placement.height,
+          rotation: 0,
+          opacity: isFirst ? 1 : 0,
+          src: clip.src,
+          mediaType: 'video',
+          playing: true,
+          loop: false,
+          volume: 1,
+          currentTime: 0,
+          duration: clip.durationSec || VEO_GENERATED_DURATION_SEC,
+          audioFadeInMs: audioEnabled ? GENERATED_AUDIO_FADE_MS : 0,
+          audioFadeOutMs: audioEnabled ? GENERATED_AUDIO_FADE_MS : 0,
+          clipStartMs: startMs,
+          clipEndMs: endMs,
+          visible: true,
+          locked: false,
+          keyframes: [
+            { time: 0, opacity: isFirst ? 1 : 0, currentTime: 0 },
+            { time: startMs, opacity: isFirst ? 1 : 0, currentTime: 0 },
+            { time: Math.min(endMs, startMs + fadeMs), opacity: 1, currentTime: Math.min(clipDurationMs, fadeMs) / 1000 },
+            { time: Math.max(startMs + fadeMs, endMs - fadeMs), opacity: 1, currentTime: Math.max(0, clipDurationMs - fadeMs) / 1000 },
+            { time: endMs, opacity: endMs >= totalDurationMs ? 1 : 0, currentTime: Math.min(clipDurationMs, endMs - startMs) / 1000 },
+            { time: totalDurationMs, opacity: endMs >= totalDurationMs ? 1 : 0, currentTime: clip.durationSec || VEO_GENERATED_DURATION_SEC },
+          ]
+        };
+      };
+
+      const primaryHeadline = headline.trim() || 'Motion AI';
+      const briefLine = brief.trim() || '';
+      const primaryCta = cta.trim() || 'Start Free Trial';
+
+      const pages: Page[] = [{
+        id: uuidv4(),
+        name: 'Scene 1',
+        aspectRatio,
+        width: targetDims.w,
+        height: targetDims.h,
+        backgroundColor: '#050505',
+        layers: [
+          buildVideoLayer('Motion AI Clip 1', firstClip, firstStartMs, firstEndMs, true),
+          buildVideoLayer('Motion AI Clip 2', secondClip, secondStartMs, secondEndMs, false),
+          {
+            id: uuidv4(),
+            name: 'Motion AI Overlay',
+            type: LayerType.RECT,
+            x: 0,
+            y: targetDims.h * 0.58,
+            width: targetDims.w,
+            height: targetDims.h * 0.42,
+            rotation: 0,
+            opacity: 0.72,
+            fill: '#050505',
+            stroke: '#050505',
+            strokeWidth: 0,
+            cornerRadius: 0,
+            visible: true,
+            locked: false,
+          } as ShapeLayer,
+          {
+            id: uuidv4(),
+            name: 'Motion AI Title',
+            type: LayerType.TEXT,
+            x: targetDims.w * 0.08,
+            y: targetDims.h * 0.65,
+            width: targetDims.w * 0.7,
+            height: 160,
+            rotation: 0,
+            opacity: 1,
+            text: primaryHeadline,
+            fontSize: Math.max(42, Math.round(targetDims.w * 0.04)),
+            fontFamily: 'Helvetica',
+            fontWeight: 'bold',
+            fill: '#ffffff',
+            align: 'left',
+            letterSpacing: 0,
+            lineHeight: 1.05,
+            visible: true,
+            locked: false,
+          } as TextLayer,
+          ...(briefLine ? [{
+            id: uuidv4(),
+            name: 'Motion AI Detail',
+            type: LayerType.TEXT,
+            x: targetDims.w * 0.08,
+            y: targetDims.h * 0.77,
+            width: targetDims.w * 0.64,
+            height: 120,
+            rotation: 0,
+            opacity: 0.95,
+            text: briefLine,
+            fontSize: Math.max(18, Math.round(targetDims.w * 0.013)),
+            fontFamily: 'Helvetica',
+            fontWeight: 'normal',
+            fill: '#d4d4d8',
+            align: 'left',
+            letterSpacing: 0,
+            lineHeight: 1.35,
+            visible: true,
+            locked: false,
+          } as TextLayer] : []),
+          {
+            id: uuidv4(),
+            name: 'Motion AI CTA',
+            type: LayerType.TEXT,
+            x: targetDims.w * 0.08,
+            y: targetDims.h * 0.905,
+            width: targetDims.w * 0.55,
+            height: 50,
+            rotation: 0,
+            opacity: 1,
+            text: primaryCta,
+            fontSize: Math.max(18, Math.round(targetDims.w * 0.014)),
+            fontFamily: 'Helvetica',
+            fontWeight: 'bold',
+            fill: '#ffffff',
+            align: 'left',
+            letterSpacing: 0.5,
+            lineHeight: 1.2,
+            visible: true,
+            locked: false,
+          } as TextLayer
+        ]
+      }];
+
+      setEditorState(prev => ({
+        ...prev,
+        pages,
+        activePageId: pages[0].id,
+        history: [[...pages]],
+        historyIndex: 0,
+        selectedLayerId: null,
+        selectedLayerIds: [],
+        playheadTime: 0,
+        isPlaying: false,
+        selectedKeyframe: null,
+      }));
+
+      setProjectName((current) => current === 'Untitled Design' || current === 'Untitled Project' ? (primaryHeadline || 'Motion AI Draft') : current);
+      setLastSaved(null);
+      setIsNewProject(false);
+      setShowVadeoAdModal(false);
+      setActiveTool('select');
+
+      const motionAiResult = await dbHelpers.recordMotionAiSuccess(userId);
+      if (!motionAiResult.error && motionAiResult.data) {
+        setUsedMotionAiRuns(motionAiResult.data.used || 0);
+        setRemainingMotionAiRuns(motionAiResult.data.remaining || 0);
+        setMotionAiLimit(motionAiResult.data.limit || 0);
+      }
+
+      setCreatorNotice(`Motion AI created a 15s ${motionAiResolution} draft with 2 Veo segments and Remotion-style overlays.`);
+      window.setTimeout(() => setCreatorNotice(null), 4000);
+    } catch (err: any) {
+      console.error(err);
+      alert(`Motion AI generation failed: ${err.message}`);
+    } finally {
+      setIsGenerating(false);
+      setStatusText('');
+    }
   };
 
   const handleStartMotion = async (aspectRatio: AspectRatio, duration: number, animation: MotionAnimationPreset, timingPrompt: string, brief: string, headline: string, cta: string, files: File[]) => {

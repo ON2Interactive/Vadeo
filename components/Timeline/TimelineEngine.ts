@@ -39,7 +39,7 @@ export class TimelineEngine {
 
         // Interpolate numeric properties
         const interpolatedProps: Partial<Layer> = {};
-        const numericProps: (keyof LayerKeyframe)[] = ['x', 'y', 'rotation', 'opacity', 'width', 'height', 'fontSize'];
+        const numericProps: (keyof LayerKeyframe)[] = ['x', 'y', 'rotation', 'opacity', 'width', 'height', 'fontSize', 'currentTime'];
 
         numericProps.forEach(prop => {
             if (start[prop] !== undefined && end[prop] !== undefined) {
@@ -66,6 +66,7 @@ export class TimelineEngine {
         if (keyframe.width !== undefined) props.width = keyframe.width;
         if (keyframe.height !== undefined) props.height = keyframe.height;
         if (keyframe.fontSize !== undefined) props.fontSize = keyframe.fontSize;
+        if (keyframe.currentTime !== undefined) props.currentTime = keyframe.currentTime;
         return props;
     }
 }

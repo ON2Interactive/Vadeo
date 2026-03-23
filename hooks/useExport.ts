@@ -39,6 +39,43 @@ export const useExport = ({
     const [downloadReadyUrl, setDownloadReadyUrl] = useState<string | null>(null);
     const [downloadReadyFilename, setDownloadReadyFilename] = useState<string | null>(null);
 
+    const getInterpolatedLayerValue = useCallback(
+        (layer: ImageLayer, prop: 'opacity' | 'currentTime', playheadMs: number): number => {
+            const keyframes = layer.keyframes
+                ?.filter((keyframe) => keyframe[prop] !== undefined)
+                .sort((a, b) => a.time - b.time);
+
+            if (!keyframes || keyframes.length === 0) {
+                if (prop === 'opacity') return layer.opacity ?? 1;
+                return layer.currentTime ?? playheadMs / 1000;
+            }
+
+            if (playheadMs <= keyframes[0].time) {
+                return keyframes[0][prop] as number;
+            }
+
+            if (playheadMs >= keyframes[keyframes.length - 1].time) {
+                return keyframes[keyframes.length - 1][prop] as number;
+            }
+
+            for (let index = 0; index < keyframes.length - 1; index += 1) {
+                const start = keyframes[index];
+                const end = keyframes[index + 1];
+                if (playheadMs >= start.time && playheadMs <= end.time) {
+                    const startValue = start[prop] as number;
+                    const endValue = end[prop] as number;
+                    const duration = end.time - start.time;
+                    if (duration <= 0) return endValue;
+                    const progress = (playheadMs - start.time) / duration;
+                    return startValue + (endValue - startValue) * progress;
+                }
+            }
+
+            return prop === 'opacity' ? (layer.opacity ?? 1) : (layer.currentTime ?? playheadMs / 1000);
+        },
+        []
+    );
+
     const prepareExportAudio = useCallback(async (videoLayers: ImageLayer[], exportDurationMs: number) => {
         if (videoLayers.length === 0) {
             return null;
@@ -52,7 +89,11 @@ export const useExport = ({
 
         const audioContext = new AudioContextCtor();
         const destination = audioContext.createMediaStreamDestination();
-        const exportVideos: HTMLVideoElement[] = [];
+        const exportVideos: Array<{
+            video: HTMLVideoElement;
+            layer: ImageLayer;
+            gainNode: GainNode;
+        }> = [];
 
         const loadVideo = (layer: ImageLayer) => new Promise<HTMLVideoElement>((resolve, reject) => {
             const video = document.createElement('video');
@@ -87,37 +128,13 @@ export const useExport = ({
             loadedVideos.forEach((video, index) => {
                 const layer = videoLayers[index];
                 const layerVolume = layer.volume ?? 1;
-                const fadeInSec = (layer.audioFadeInMs ?? 0) / 1000;
-                const fadeOutSec = (layer.audioFadeOutMs ?? 0) / 1000;
-                const exportDurationSec = exportDurationMs / 1000;
                 const sourceNode = audioContext.createMediaElementSource(video);
                 const gainNode = audioContext.createGain();
                 gainNode.gain.value = 0;
                 sourceNode.connect(gainNode);
                 gainNode.connect(destination);
 
-                const gain = gainNode.gain;
-                const now = audioContext.currentTime;
-                const fadeInEnd = now + (fadeInSec || 0.01);
-                const fadeOutStart = now + Math.max(fadeInSec || 0, exportDurationSec - fadeOutSec);
-                const exportEnd = now + exportDurationSec;
-
-                gain.cancelScheduledValues(now);
-                if (fadeInSec > 0) {
-                    gain.setValueAtTime(0, now);
-                    gain.linearRampToValueAtTime(layerVolume, fadeInEnd);
-                } else {
-                    gain.setValueAtTime(layerVolume, now);
-                }
-
-                gain.setValueAtTime(layerVolume, Math.max(fadeInEnd, now));
-
-                if (fadeOutSec > 0) {
-                    gain.setValueAtTime(layerVolume, Math.max(fadeInEnd, fadeOutStart));
-                    gain.linearRampToValueAtTime(0, exportEnd);
-                }
-
-                exportVideos.push(video);
+                exportVideos.push({ video, layer, gainNode });
             });
 
             await audioContext.resume();
@@ -125,12 +142,47 @@ export const useExport = ({
             return {
                 stream: destination.stream,
                 async play() {
-                    await Promise.all(exportVideos.map((video) => video.play().catch((error) => {
-                        console.warn('Export audio playback failed:', error);
-                    })));
+                    await Promise.all(exportVideos.map(async ({ video }) => {
+                        try {
+                            await video.play();
+                            video.pause();
+                        } catch (error) {
+                            console.warn('Export audio playback priming failed:', error);
+                        }
+                    }));
+                },
+                async sync(playheadMs: number) {
+                    exportVideos.forEach(({ video, layer, gainNode }) => {
+                        const startMs = layer.clipStartMs ?? 0;
+                        const endMs = layer.clipEndMs ?? exportDurationMs;
+                        const shouldBeActive = playheadMs >= startMs && playheadMs <= endMs;
+                        const opacity = Math.max(0, Math.min(1, getInterpolatedLayerValue(layer, 'opacity', playheadMs)));
+                        const localTime = Math.max(0, getInterpolatedLayerValue(layer, 'currentTime', playheadMs));
+                        const targetVolume = shouldBeActive ? (layer.volume ?? 1) * opacity : 0;
+
+                        gainNode.gain.value = targetVolume;
+
+                        if (Math.abs((video.currentTime || 0) - localTime) > 0.2) {
+                            try {
+                                video.currentTime = localTime;
+                            } catch (error) {
+                                console.warn('Failed to sync export audio currentTime:', error);
+                            }
+                        }
+
+                        if (shouldBeActive && targetVolume > 0.001) {
+                            if (video.paused) {
+                                video.play().catch((error) => {
+                                    console.warn('Export audio playback failed:', error);
+                                });
+                            }
+                        } else if (!video.paused) {
+                            video.pause();
+                        }
+                    });
                 },
                 async cleanup() {
-                    exportVideos.forEach((video) => {
+                    exportVideos.forEach(({ video }) => {
                         video.pause();
                         video.src = '';
                         video.load();
@@ -148,7 +200,7 @@ export const useExport = ({
             }
             return null;
         }
-    }, []);
+    }, [getInterpolatedLayerValue]);
 
     // Helper to get file handle (Chrome/Edge/Opera positive)
     const getSaveFileHandle = async (suggestedName: string, types: { description: string, accept: Record<string, string[]> }[]) => {
@@ -506,6 +558,7 @@ export const useExport = ({
             const playLayers = updateVideoState(activePage.layers, true, false);
             updateActivePage({ layers: playLayers });
             await exportAudio?.play();
+            await exportAudio?.sync?.(0);
             setEditorState(prev => ({
                 ...prev,
                 playheadTime: 0,
@@ -534,6 +587,7 @@ export const useExport = ({
             const timer = setInterval(() => {
                 elapsed += 100;
                 setExportProgress(Math.min(100, (elapsed / duration) * 100));
+                exportAudio?.sync?.(Math.min(duration, elapsed));
                 setEditorState(prev => ({
                     ...prev,
                     playheadTime: Math.min(duration, elapsed),

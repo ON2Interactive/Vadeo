@@ -86,6 +86,13 @@ const DEFAULT_TIMELINE_DURATION_MS = 5000;
 const VEO_GENERATED_DURATION_SEC = 8;
 const TRIAL_MOTION_DOWNLOAD_LIMIT = 2;
 const getLastOpenedProjectStorageKey = (userId: string) => `vadeo_last_open_project_${userId}`;
+const buildPersistedEditorSnapshot = (editorState: EditorState) => JSON.stringify({
+  pages: editorState.pages,
+  activePageId: editorState.activePageId,
+  zoom: editorState.zoom,
+  pan: editorState.pan,
+  isPro: editorState.isPro
+});
 
 type PickerCapableInput = HTMLInputElement & {
   showPicker?: () => void;
@@ -258,6 +265,14 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
         }));
       }
       setIsNewProject(false);
+      lastPersistedNameRef.current = initialProject.name || 'Untitled Project';
+      if (loadedPages) {
+        lastPersistedEditorSnapshotRef.current = buildPersistedEditorSnapshot({
+          ...editorState,
+          pages: loadedPages,
+          activePageId: loadedPages[0]?.id || DEFAULT_PAGE_ID,
+        });
+      }
     }
   }, [initialProject]);
 
@@ -300,6 +315,12 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
           selectedKeyframe: null
         }));
         setIsNewProject(false);
+        lastPersistedNameRef.current = project.name || 'Untitled Project';
+        lastPersistedEditorSnapshotRef.current = buildPersistedEditorSnapshot({
+          ...editorState,
+          pages: loadedPages,
+          activePageId: loadedPages[0]?.id || DEFAULT_PAGE_ID,
+        });
       } catch (restoreError) {
         console.error('Failed to restore last opened project:', restoreError);
       }
@@ -337,6 +358,8 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
       selectedKeyframe: null
     };
   });
+  const lastPersistedNameRef = useRef<string>('Untitled Design');
+  const lastPersistedEditorSnapshotRef = useRef<string>(buildPersistedEditorSnapshot(editorState));
 
   // ... Tool & UI State ...
   const [activeTool, setActiveTool] = useState<string>('select');
@@ -497,6 +520,11 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
     try {
       setIsSaving(true);
       const thumbnail = editorState.pages[0]?.thumbnail;
+      const currentSnapshot = buildPersistedEditorSnapshot(editorState);
+      const isNameOnlyUpdate =
+        !isNewProject &&
+        currentSnapshot === lastPersistedEditorSnapshotRef.current &&
+        projectName !== lastPersistedNameRef.current;
 
       let result;
       if (isNewProject) {
@@ -507,6 +535,10 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
           localStorage.setItem(getLastOpenedProjectStorageKey(userId), result.data.id);
           console.log("Project created:", result.data.id);
         }
+      } else if (isNameOnlyUpdate) {
+        result = await dbHelpers.updateProject(projectId, projectName, undefined, undefined);
+        localStorage.setItem(getLastOpenedProjectStorageKey(userId), projectId);
+        console.log("Project renamed:", projectId);
       } else {
         result = await dbHelpers.updateProject(projectId, projectName, editorState, thumbnail);
         localStorage.setItem(getLastOpenedProjectStorageKey(userId), projectId);
@@ -514,6 +546,8 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
       }
 
       if (result.error) throw result.error;
+      lastPersistedNameRef.current = projectName;
+      lastPersistedEditorSnapshotRef.current = currentSnapshot;
       setLastSaved(Date.now());
     } catch (err) {
       console.error('Failed to save to Supabase:', err);
@@ -558,6 +592,11 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
       const performAutosave = async () => {
         try {
           const thumbnail = current.editorState.pages[0]?.thumbnail;
+          const currentSnapshot = buildPersistedEditorSnapshot(current.editorState);
+          const isNameOnlyUpdate =
+            !current.isNewProject &&
+            currentSnapshot === lastPersistedEditorSnapshotRef.current &&
+            current.projectName !== lastPersistedNameRef.current;
           if (current.isNewProject) {
             const result = await dbHelpers.saveProject(
               current.userId,
@@ -573,6 +612,15 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
               localStorage.setItem(getLastOpenedProjectStorageKey(current.userId), result.data.id);
               console.log('Autosave created new project:', result.data.id);
             }
+          } else if (isNameOnlyUpdate) {
+            const result = await dbHelpers.updateProject(
+              current.projectId,
+              current.projectName,
+              undefined,
+              undefined
+            );
+            if (result.error) throw result.error;
+            localStorage.setItem(getLastOpenedProjectStorageKey(current.userId), current.projectId);
           } else {
             const result = await dbHelpers.updateProject(
               current.projectId,
@@ -583,6 +631,8 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
             if (result.error) throw result.error;
             localStorage.setItem(getLastOpenedProjectStorageKey(current.userId), current.projectId);
           }
+          lastPersistedNameRef.current = current.projectName;
+          lastPersistedEditorSnapshotRef.current = currentSnapshot;
           setLastSaved(Date.now());
           console.log("Autosave complete.");
         } catch (e) {

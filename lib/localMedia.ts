@@ -46,7 +46,7 @@ export const localMediaStore = {
   },
 
   async persistBlobUrl(src: string): Promise<string> {
-    if (!src.startsWith('blob:')) {
+    if (!src.startsWith('blob:') && !src.startsWith('data:')) {
       return src;
     }
 

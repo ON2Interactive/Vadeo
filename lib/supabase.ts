@@ -94,7 +94,12 @@ const persistEditorMedia = async (editorState: any) => {
         })
       );
 
-      return { ...page, layers };
+      const persistedThumbnail =
+        typeof page.thumbnail === 'string'
+          ? await localMediaStore.persistBlobUrl(page.thumbnail)
+          : page.thumbnail;
+
+      return { ...page, layers, thumbnail: persistedThumbnail };
     })
   );
 
@@ -118,7 +123,12 @@ const resolveEditorMedia = async (editorState: any) => {
         })
       );
 
-      return { ...page, layers };
+      const resolvedThumbnail =
+        typeof page.thumbnail === 'string' && localMediaStore.isLocalMediaUri(page.thumbnail)
+          ? await localMediaStore.resolveSrc(page.thumbnail)
+          : page.thumbnail;
+
+      return { ...page, layers, thumbnail: resolvedThumbnail };
     })
   );
 
@@ -400,7 +410,16 @@ export const dbHelpers = {
 
     try {
       const data = await fetchJson<any[]>(buildDataUrl('projects'));
-      return { data, error: null };
+      const resolved = await Promise.all(
+        data.map(async (project) => ({
+          ...project,
+          thumbnail:
+            typeof project.thumbnail === 'string' && localMediaStore.isLocalMediaUri(project.thumbnail)
+              ? await localMediaStore.resolveSrc(project.thumbnail)
+              : project.thumbnail,
+        }))
+      );
+      return { data: resolved, error: null };
     } catch (error) {
       return { data: [], error };
     }
@@ -414,13 +433,16 @@ export const dbHelpers = {
 
     try {
       const persistedEditorState = await persistEditorMedia(editorState);
+      const persistedThumbnail = typeof thumbnail === 'string'
+        ? await localMediaStore.persistBlobUrl(thumbnail)
+        : thumbnail;
       const data = await fetchJson<any>(buildDataUrl('projects'), {
         method: 'POST',
         body: JSON.stringify({
           scope: 'projects',
           name: projectName,
           editor_state: persistedEditorState,
-          thumbnail,
+          thumbnail: persistedThumbnail,
         }),
       });
       return { data, error: null };
@@ -432,6 +454,9 @@ export const dbHelpers = {
   async updateProject(projectId: string, projectName: string, editorState: any, thumbnail?: string) {
     try {
       const persistedEditorState = await persistEditorMedia(editorState);
+      const persistedThumbnail = typeof thumbnail === 'string'
+        ? await localMediaStore.persistBlobUrl(thumbnail)
+        : thumbnail;
       const data = await fetchJson<any>(buildDataUrl('project'), {
         method: 'PATCH',
         body: JSON.stringify({
@@ -439,7 +464,7 @@ export const dbHelpers = {
           id: projectId,
           name: projectName,
           editor_state: persistedEditorState,
-          thumbnail,
+          thumbnail: persistedThumbnail,
         }),
       });
       return { data, error: null };

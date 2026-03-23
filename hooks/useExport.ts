@@ -294,13 +294,31 @@ export const useExport = ({
                 }
 
                 const allAdvanced = readyVideos.every((video) => {
-                    const advanced = (video.currentTime ?? 0) > (1 / 30);
                     const activelyPlaying = !video.paused && !video.ended;
-                    return advanced && activelyPlaying;
+                    return activelyPlaying;
                 });
 
                 if (allAdvanced || performance.now() >= deadline) {
-                    resolve();
+                    const supportsFrameCallback = readyVideos.every(
+                        (video) => typeof (video as any).requestVideoFrameCallback === 'function'
+                    );
+
+                    if (!supportsFrameCallback) {
+                        resolve();
+                        return;
+                    }
+
+                    let remaining = readyVideos.length;
+                    const done = () => {
+                        remaining -= 1;
+                        if (remaining <= 0) resolve();
+                    };
+
+                    readyVideos.forEach((video) => {
+                        (video as any).requestVideoFrameCallback(() => {
+                            done();
+                        });
+                    });
                     return;
                 }
 
@@ -641,8 +659,29 @@ export const useExport = ({
                 }
                 requestAnimationFrame(forceRedraw);
             };
+            const getNodeVideo = (layerId: string): HTMLVideoElement | null => {
+                const node = stage.findOne(`#${layerId}`) as Konva.Image | undefined;
+                const media = node?.image?.();
+                return media instanceof HTMLVideoElement ? media : null;
+            };
 
-            requestAnimationFrame(forceRedraw);
+            const primaryCanvasVideo = videoLayers.length > 0 ? getNodeVideo(videoLayers[0].id) : null;
+
+            if (primaryCanvasVideo && typeof (primaryCanvasVideo as any).requestVideoFrameCallback === 'function') {
+                const drawOnVideoFrame = () => {
+                    if (!isRecording) return;
+                    const layers = stage.children;
+                    if (layers) {
+                        layers.forEach((layer: any) => layer.draw());
+                    } else {
+                        stage.draw();
+                    }
+                    (primaryCanvasVideo as any).requestVideoFrameCallback(() => drawOnVideoFrame());
+                };
+                (primaryCanvasVideo as any).requestVideoFrameCallback(() => drawOnVideoFrame());
+            } else {
+                requestAnimationFrame(forceRedraw);
+            }
 
             const advancePlayback = () => {
                 if (!isRecording) return;

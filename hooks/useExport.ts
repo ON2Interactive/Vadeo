@@ -379,6 +379,18 @@ export const useExport = ({
             clipVideo.load();
         });
 
+        await new Promise<void>((resolve, reject) => {
+            const handleSeeked = () => resolve();
+            clipVideo.addEventListener('seeked', handleSeeked, { once: true });
+            clipVideo.currentTime = 0;
+            const timeout = window.setTimeout(() => {
+                clipVideo.removeEventListener('seeked', handleSeeked);
+                resolve();
+            }, 1000);
+            clipVideo.addEventListener('seeked', () => window.clearTimeout(timeout), { once: true });
+            clipVideo.onerror = () => reject(new Error('Failed to seek Motion AI clip to frame 0.'));
+        });
+
         const clipDurationMs = Math.min(
             config.duration,
             Math.round((clipVideo.duration || clipLayer.duration || DEFAULT_VIDEO_DURATION_SEC) * 1000)
@@ -491,10 +503,14 @@ export const useExport = ({
         await new Promise<void>((resolve, reject) => {
             let stopped = false;
             let rafId = 0;
+            let frameCallbackHandle: number | null = null;
             const stopRecording = () => {
                 if (stopped) return;
                 stopped = true;
                 if (rafId) cancelAnimationFrame(rafId);
+                if (frameCallbackHandle !== null && typeof (clipVideo as any).cancelVideoFrameCallback === 'function') {
+                    (clipVideo as any).cancelVideoFrameCallback(frameCallbackHandle);
+                }
                 clipVideo.pause();
                 if (recorder.state === 'recording') {
                     recorder.stop();
@@ -561,12 +577,29 @@ export const useExport = ({
                 rafId = requestAnimationFrame(monitorFrame);
             };
 
+            const monitorVideoFrame = () => {
+                if (stopped) return;
+                renderFrame();
+                const elapsedMs = Math.min(clipDurationMs, Math.round((clipVideo.currentTime || 0) * 1000));
+                setExportProgress(Math.min(100, (elapsedMs / clipDurationMs) * 100));
+                if (elapsedMs >= clipDurationMs || clipVideo.ended) {
+                    stopRecording();
+                    return;
+                }
+                frameCallbackHandle = (clipVideo as any).requestVideoFrameCallback(() => monitorVideoFrame());
+            };
+
             setStatusText('Recording Motion AI...');
             setExportProgress(0);
-            recorder.start(250);
             clipVideo.currentTime = 0;
+            renderFrame();
+            recorder.start(250);
             clipVideo.play().then(() => {
-                rafId = requestAnimationFrame(monitorFrame);
+                if (typeof (clipVideo as any).requestVideoFrameCallback === 'function') {
+                    frameCallbackHandle = (clipVideo as any).requestVideoFrameCallback(() => monitorVideoFrame());
+                } else {
+                    rafId = requestAnimationFrame(monitorFrame);
+                }
             }).catch((error) => {
                 stopRecording();
                 reject(error);

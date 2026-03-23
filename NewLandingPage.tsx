@@ -6,6 +6,8 @@ import { dbHelpers } from './lib/supabase';
 import { useRecaptcha } from './hooks/useRecaptcha';
 import heroBackgroundVideo from './Assets/HeroBG.mp4';
 import generateDemoVideo from './Assets/V-Demo-01.mp4';
+import motionDemoVideo from './Assets/Motion.mp4';
+import motionAiDemoVideo from './Assets/Motion-AI.mp4';
 
 interface NewLandingPageProps {
     onStartEditing: () => void;
@@ -196,6 +198,54 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
                         <p>
                             Overlay uploaded or generated videos with brand assets, shapes, icons, and text to make your videos truly unique.
                         </p>
+                    </div>
+                </div>
+            </section>
+
+            <section className="relative z-10 px-6 py-20 sm:px-8 sm:py-24">
+                <div className="mx-auto max-w-[1400px]">
+                    <div className="mx-auto max-w-5xl text-center">
+                        <h2 className={sectionH2ClassName}>Motion&Motion AI</h2>
+                    </div>
+
+                    <div className="mt-10 grid gap-6 lg:grid-cols-2">
+                        <div className="overflow-hidden rounded-[18px] border border-white/10 bg-zinc-950 shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
+                            <video
+                                src={motionDemoVideo}
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
+                                className="h-full w-full object-cover"
+                            />
+                        </div>
+
+                        <div className="overflow-hidden rounded-[18px] border border-white/10 bg-zinc-950 shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
+                            <video
+                                src={motionAiDemoVideo}
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
+                                className="h-full w-full object-cover"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="mt-8 grid gap-6 text-center lg:grid-cols-2">
+                        <div className="space-y-3 rounded-[18px] border border-white/10 bg-zinc-950/70 px-6 py-6">
+                            <h3 className="text-[18px] font-bold text-white sm:text-[20px]">Motion</h3>
+                            <p className="text-[15px] leading-relaxed text-white/70">
+                                Build ads from uploaded images or video, sequence the motion on one scene, and shape the final output with editable overlays, titles, and CTA layers.
+                            </p>
+                        </div>
+
+                        <div className="space-y-3 rounded-[18px] border border-white/10 bg-zinc-950/70 px-6 py-6">
+                            <h3 className="text-[18px] font-bold text-white sm:text-[20px]">Motion AI</h3>
+                            <p className="text-[15px] leading-relaxed text-white/70">
+                                Turn a single product image or two frame references into an AI-generated 8-second scene with sound, then refine it inside Vadeo with branded ad layers.
+                            </p>
+                        </div>
                     </div>
                 </div>
             </section>

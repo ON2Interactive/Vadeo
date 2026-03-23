@@ -1815,7 +1815,6 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
         clipMeta: { src: string; width: number; height: number; durationSec: number },
       ): ImageLayer => {
         const placement = buildCoverPlacement(clipMeta.width, clipMeta.height);
-        const clipDurationMs = Math.round((clipMeta.durationSec || VEO_GENERATED_DURATION_SEC) * 1000);
         return {
           id: uuidv4(),
           name,
@@ -1831,18 +1830,9 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
           playing: true,
           loop: false,
           volume: 1,
-          currentTime: 0,
           duration: clipMeta.durationSec || VEO_GENERATED_DURATION_SEC,
-          audioFadeInMs: audioEnabled ? GENERATED_AUDIO_FADE_MS : 0,
-          audioFadeOutMs: audioEnabled ? GENERATED_AUDIO_FADE_MS : 0,
-          clipStartMs: 0,
-          clipEndMs: totalDurationMs,
           visible: true,
           locked: false,
-          keyframes: [
-            { time: 0, opacity: 1, currentTime: 0 },
-            { time: totalDurationMs, opacity: 1, currentTime: clipDurationMs / 1000 },
-          ]
         };
       };
 

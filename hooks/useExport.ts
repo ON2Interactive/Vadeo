@@ -515,7 +515,7 @@ export const useExport = ({
             if (!canvas) throw new Error("Canvas missing");
 
             // Capture stream
-            const stream = canvas.captureStream(30);
+            const stream = canvas.captureStream(60);
             const exportAudio = await prepareExportAudio(videoLayers, config.duration);
             exportAudio?.stream.getAudioTracks().forEach((track) => stream.addTrack(track));
 
@@ -666,6 +666,11 @@ export const useExport = ({
             };
 
             const primaryCanvasVideo = videoLayers.length > 0 ? getNodeVideo(videoLayers[0].id) : null;
+            const shouldFollowPrimaryVideoClock = Boolean(
+                primaryCanvasVideo &&
+                videoLayers.length === 1 &&
+                !videoLayers[0].keyframes?.some((keyframe) => typeof keyframe.currentTime === 'number')
+            );
 
             if (primaryCanvasVideo && typeof (primaryCanvasVideo as any).requestVideoFrameCallback === 'function') {
                 const drawOnVideoFrame = () => {
@@ -686,7 +691,12 @@ export const useExport = ({
             const advancePlayback = () => {
                 if (!isRecording) return;
 
-                const elapsed = Math.min(duration, performance.now() - recordingStart);
+                const elapsed = Math.min(
+                    duration,
+                    shouldFollowPrimaryVideoClock && primaryCanvasVideo
+                        ? Math.max(0, (primaryCanvasVideo.currentTime || 0) * 1000)
+                        : performance.now() - recordingStart
+                );
                 setExportProgress(Math.min(100, (elapsed / duration) * 100));
                 exportAudio?.sync?.(Math.min(duration, elapsed));
                 setEditorState(prev => ({

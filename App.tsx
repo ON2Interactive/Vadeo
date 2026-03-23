@@ -1601,15 +1601,16 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard, trialState
     }
   };
 
-  const handleStartCreator = (aspectRatio: AspectRatio, duration: number, websiteUrl: string, brief: string, headline: string, cta: string, files: File[]) => {
+  const handleStartCreator = (aspectRatio: AspectRatio, duration: number, websiteUrl: string, brief: string, headline: string, cta: string, files: File[], audioEnabled: boolean, audioType: 'auto' | 'dialogue' | 'sound-effects' | 'ambient') => {
     syncCanvasToAspectRatio(aspectRatio);
     setShowVadeoAdModal(false);
 
     const summaryParts = [
-      `Creator workspace prepared for ${aspectRatio}.`,
+      `Motion AI workspace prepared for ${aspectRatio}.`,
       `${duration}s selected.`,
       files.length > 0 ? `${files.length} image${files.length > 1 ? 's' : ''} attached.` : null,
       websiteUrl ? 'Website captured.' : null,
+      audioEnabled ? `Audio: ${audioType}.` : 'Audio disabled.',
       brief ? 'Brief captured.' : null,
       headline ? `Headline: ${headline}.` : null,
       cta ? `CTA: ${cta}.` : null,

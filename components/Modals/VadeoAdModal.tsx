@@ -10,13 +10,13 @@ interface Props {
   onGenerateText: (prompt: string, aspectRatio: AspectRatio, audioEnabled: boolean, audioType: AudioType, imageFile?: File | null) => void;
   onGenerateFrameVideo: (startFile: File, endFile: File, prompt: string, aspectRatio: AspectRatio, audioEnabled: boolean, audioType: AudioType) => void;
   onGenerateRefVideo: (files: File[], prompt: string, aspectRatio: AspectRatio, audioEnabled: boolean, audioType: AudioType) => void;
-  onStartCreator: (aspectRatio: AspectRatio, duration: number, websiteUrl: string, brief: string, headline: string, cta: string, files: File[]) => void;
+  onStartCreator: (aspectRatio: AspectRatio, duration: number, websiteUrl: string, brief: string, headline: string, cta: string, files: File[], audioEnabled: boolean, audioType: AudioType) => void;
   isGenerating: boolean;
   initialAspectRatio: AspectRatio;
 }
 
 const ASPECT_OPTIONS: AspectRatio[] = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9'];
-const CREATOR_DURATION_OPTIONS = [5, 10, 15, 30, 45, 60] as const;
+const MOTION_AI_DURATION_SEC = 15;
 const AUDIO_TYPE_OPTIONS: Array<{ value: AudioType; label: string }> = [
   { value: 'auto', label: 'Auto' },
   { value: 'dialogue', label: 'Dialogue' },
@@ -50,7 +50,6 @@ const VadeoAdModal: React.FC<Props> = ({
   const [framePrompt, setFramePrompt] = useState('');
   const [refPrompt, setRefPrompt] = useState('');
   const [creatorWebsiteUrl, setCreatorWebsiteUrl] = useState('');
-  const [creatorDuration, setCreatorDuration] = useState<number>(15);
   const [creatorBrief, setCreatorBrief] = useState('');
   const [creatorHeadline, setCreatorHeadline] = useState('');
   const [creatorCta, setCreatorCta] = useState('');
@@ -58,9 +57,11 @@ const VadeoAdModal: React.FC<Props> = ({
   const [generateAudioEnabled, setGenerateAudioEnabled] = useState(true);
   const [frameAudioEnabled, setFrameAudioEnabled] = useState(true);
   const [refAudioEnabled, setRefAudioEnabled] = useState(true);
+  const [creatorAudioEnabled, setCreatorAudioEnabled] = useState(true);
   const [generateAudioType, setGenerateAudioType] = useState<AudioType>('auto');
   const [frameAudioType, setFrameAudioType] = useState<AudioType>('auto');
   const [refAudioType, setRefAudioType] = useState<AudioType>('auto');
+  const [creatorAudioType, setCreatorAudioType] = useState<AudioType>('auto');
   const [generateImageFile, setGenerateImageFile] = useState<File | null>(null);
   const [frameStartFile, setFrameStartFile] = useState<File | null>(null);
   const [frameEndFile, setFrameEndFile] = useState<File | null>(null);
@@ -569,7 +570,7 @@ const VadeoAdModal: React.FC<Props> = ({
               <label
                 htmlFor={CREATOR_UPLOAD_INPUT_ID}
                 className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-zinc-700 text-zinc-200 transition-colors hover:border-white hover:text-white"
-                title="Upload 1 to 3 reference images"
+                title="Upload up to 3 reference images"
               >
                 <Upload size={16} />
               </label>
@@ -615,7 +616,7 @@ const VadeoAdModal: React.FC<Props> = ({
           />
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-3">
             <label className="text-xs text-zinc-500">Aspect ratio</label>
             <select
@@ -634,20 +635,16 @@ const VadeoAdModal: React.FC<Props> = ({
 
           <div className="space-y-3">
             <label className="text-xs text-zinc-500">Duration</label>
-            <select
-              value={creatorDuration}
-              onChange={(e) => setCreatorDuration(Number(e.target.value))}
-              disabled={isGenerating}
-              className={`${inputClass} appearance-none`}
-            >
-              {CREATOR_DURATION_OPTIONS.map((option) => (
-                <option key={option} value={option} className="bg-[#121214] text-white">
-                  {option}s
-                </option>
-              ))}
-            </select>
+            <input
+              value="15s (3 x 5s clips)"
+              disabled
+              className={`${inputClass} opacity-70`}
+            />
           </div>
         </div>
+
+        {renderAudioToggle(creatorAudioEnabled, setCreatorAudioEnabled)}
+        {renderAudioTypeSelect(creatorAudioType, setCreatorAudioType, isGenerating || !creatorAudioEnabled)}
 
         <div className="space-y-3">
           <label className="text-xs text-zinc-500">Creative brief</label>
@@ -701,7 +698,7 @@ const VadeoAdModal: React.FC<Props> = ({
           disabled={isGenerating}
           className="h-14 rounded-full px-6 flex items-center justify-center transition-all active:scale-[0.98] bg-white text-black hover:bg-zinc-200 disabled:opacity-50 disabled:hover:bg-white text-sm font-semibold"
         >
-          Start Creator
+          Start Motion AI
         </button>
       </div>
     </div>
@@ -709,7 +706,17 @@ const VadeoAdModal: React.FC<Props> = ({
 
   const handleSubmit = () => {
     if (activeTab === 'creator') {
-      onStartCreator(aspectRatio, creatorDuration, creatorWebsiteUrl.trim(), creatorBrief, creatorHeadline, creatorCta, creatorFiles);
+      onStartCreator(
+        aspectRatio,
+        MOTION_AI_DURATION_SEC,
+        creatorWebsiteUrl.trim(),
+        creatorBrief,
+        creatorHeadline,
+        creatorCta,
+        creatorFiles,
+        creatorAudioEnabled,
+        creatorAudioType
+      );
       return;
     }
 
@@ -755,7 +762,7 @@ const VadeoAdModal: React.FC<Props> = ({
             <button onClick={() => setActiveTab('generate')} className={tabButtonClass('generate')}>Generate</button>
             <button onClick={() => setActiveTab('frame-video')} className={tabButtonClass('frame-video')}>Frames to Video</button>
             <button onClick={() => setActiveTab('ref-video')} className={tabButtonClass('ref-video')}>Ref-Video</button>
-            <button onClick={() => setActiveTab('creator')} className={tabButtonClass('creator')}>Creator</button>
+            <button onClick={() => setActiveTab('creator')} className={tabButtonClass('creator')}>Motion AI</button>
           </div>
         </div>
 

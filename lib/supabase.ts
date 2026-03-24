@@ -558,7 +558,7 @@ export const storageHelpers = {
 export const adminHelpers = {
   async hasAdminSession() {
     try {
-      const data = await fetchJson<{ authenticated: boolean }>('/api/admin/session');
+      const data = await fetchJson<{ authenticated: boolean }>('/api/admin?action=session');
       return data.authenticated;
     } catch {
       return false;
@@ -567,7 +567,7 @@ export const adminHelpers = {
 
   async login(email: string, password: string) {
     try {
-      const data = await fetchJson<{ ok: boolean }>('/api/admin/auth', {
+      const data = await fetchJson<{ ok: boolean }>('/api/admin?action=login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
@@ -579,7 +579,7 @@ export const adminHelpers = {
 
   async logout() {
     try {
-      const data = await fetchJson<{ ok: boolean }>('/api/admin/logout', { method: 'POST' });
+      const data = await fetchJson<{ ok: boolean }>('/api/admin?action=logout', { method: 'POST' });
       return { data, error: null };
     } catch (error) {
       return { data: null, error };
@@ -588,7 +588,7 @@ export const adminHelpers = {
 
   async getAllUsers() {
     try {
-      const data = await fetchJson<{ users: any[] }>('/api/admin/users?view=users');
+      const data = await fetchJson<{ users: any[] }>('/api/admin?view=users');
       return { data: data.users || [], error: null };
     } catch (error) {
       return { data: [], error };
@@ -597,7 +597,7 @@ export const adminHelpers = {
 
   async getUserStats() {
     try {
-      const data = await fetchJson<any>('/api/admin/users?view=stats');
+      const data = await fetchJson<any>('/api/admin?view=stats');
       return { data, error: null };
     } catch (error) {
       return { data: null, error };
@@ -610,7 +610,7 @@ export const adminHelpers = {
 
   async updateUser(userId: string, updates: { full_name?: string; credits?: number; is_admin?: boolean }) {
     try {
-      const data = await fetchJson<any>('/api/admin/users', {
+      const data = await fetchJson<any>('/api/admin', {
         method: 'PUT',
         body: JSON.stringify({ id: userId, ...updates }),
       });
@@ -622,7 +622,7 @@ export const adminHelpers = {
 
   async deleteUser(userId: string) {
     try {
-      await fetchJson('/api/admin/users', {
+      await fetchJson('/api/admin', {
         method: 'DELETE',
         body: JSON.stringify({ id: userId }),
       });
@@ -634,7 +634,7 @@ export const adminHelpers = {
 
   async toggleAdminStatus(userId: string, isAdmin: boolean) {
     try {
-      const data = await fetchJson<any>('/api/admin/users', {
+      const data = await fetchJson<any>('/api/admin', {
         method: 'PUT',
         body: JSON.stringify({ id: userId, is_admin: isAdmin }),
       });

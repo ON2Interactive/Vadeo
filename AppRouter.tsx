@@ -46,6 +46,8 @@ const AppRouter: React.FC = () => {
 
     useEffect(() => {
         const initializeRouter = async () => {
+            const adminSession = await adminHelpers.hasAdminSession();
+            setIsAdminAuthenticated(adminSession);
             const params = new URLSearchParams(window.location.search);
             if (params.get('payment') === 'success') {
                 const pendingPurchase = localStorage.getItem('pending_purchase');
@@ -91,7 +93,7 @@ const AppRouter: React.FC = () => {
                 return;
             }
 
-            checkAuth();
+            checkAuth(adminSession);
         };
 
         initializeRouter();
@@ -148,13 +150,14 @@ const AppRouter: React.FC = () => {
             setView('googleCallback');
         } else if (path === '/admin') {
             setView('admin');
-        } else if (path === '/admin-login') {
+        } else if (path === '/admin-login' || path === '/adminlogin') {
             setView('adminLogin');
         }
     }, [location.pathname]);
 
-    const checkAuth = async () => {
+    const checkAuth = async (adminSessionOverride?: boolean) => {
         const session = await authHelpers.getSession();
+        const adminSession = typeof adminSessionOverride === 'boolean' ? adminSessionOverride : await adminHelpers.hasAdminSession();
         const path = window.location.pathname;
         const params = new URLSearchParams(window.location.search);
         const wantsTrial = params.get('trial') === '1';
@@ -225,9 +228,19 @@ const AppRouter: React.FC = () => {
                     navigate('/pricing', { replace: true });
                 }
             } else if (path === '/admin') {
-                setView('admin');
+                if (adminSession) {
+                    setIsAdminAuthenticated(true);
+                    setView('admin');
+                } else {
+                    navigate('/admin-login', { replace: true });
+                }
             } else if (path === '/admin-login') {
-                setView('adminLogin');
+                if (adminSession) {
+                    setIsAdminAuthenticated(true);
+                    navigate('/admin', { replace: true });
+                } else {
+                    setView('adminLogin');
+                }
             } else {
                 // Default for unknown authenticated routes? 
                 // Maybe check if it matches other public routes
@@ -242,9 +255,19 @@ const AppRouter: React.FC = () => {
             setHasSubscription(false);
             setTrialState({ status: 'none', startedAt: null, expiresAt: null });
             if (path === '/admin') {
-                setView('admin');
+                if (adminSession) {
+                    setIsAdminAuthenticated(true);
+                    setView('admin');
+                } else {
+                    setView('adminLogin');
+                }
             } else if (path === '/admin-login') {
-                setView('adminLogin');
+                if (adminSession) {
+                    setIsAdminAuthenticated(true);
+                    navigate('/admin', { replace: true });
+                } else {
+                    setView('adminLogin');
+                }
             } else if (path === '/contact') {
                 setView('contact');
             } else if (path === '/about') {
@@ -289,12 +312,15 @@ const AppRouter: React.FC = () => {
     };
 
     const handleAdminLoginSuccess = () => {
+        setIsAdminAuthenticated(true);
         navigate('/admin');
     };
 
     const handleAdminLogout = () => {
-        setIsAdminAuthenticated(false);
-        navigate('/admin-login');
+        adminHelpers.logout().finally(() => {
+            setIsAdminAuthenticated(false);
+            navigate('/admin-login');
+        });
     };
 
     const handleLoginSuccess = () => {
@@ -481,7 +507,7 @@ const AppRouter: React.FC = () => {
     }
 
     if (view === 'admin') {
-        if (!isAdminAuthenticated || !isAdmin) {
+        if (!isAdminAuthenticated) {
             setView('adminLogin');
             return null;
         }

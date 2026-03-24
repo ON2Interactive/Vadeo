@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { Shield, Chrome } from 'lucide-react';
-import { authHelpers } from '../../lib/supabase';
+import { adminHelpers } from '../../lib/supabase';
 
 interface AdminLoginPageProps {
     onSuccess: () => void;
 }
 
 export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onSuccess }) => {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -16,73 +17,119 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onSuccess }) => 
         setLoading(true);
 
         try {
-            await authHelpers.signInWithGoogle('/admin');
+            const { error: loginError } = await adminHelpers.login(email, password);
+            if (loginError) {
+                setError(loginError instanceof Error ? loginError.message : 'Could not sign in.');
+                setLoading(false);
+                return;
+            }
+            onSuccess();
         } catch (err) {
-            console.error('Admin login error:', err);
-            setError('Could not start Google admin sign-in.');
+            setError('Could not sign in.');
             setLoading(false);
         }
     };
 
     return (
-        <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ position: 'fixed', inset: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)', backgroundSize: '50px 50px', pointerEvents: 'none' }} />
+        <main style={{
+            minHeight: '100vh',
+            display: 'grid',
+            placeItems: 'center',
+            padding: '32px',
+            background: 'radial-gradient(circle at top left, rgba(255,255,255,0.08), transparent 28%), linear-gradient(180deg, #090909 0%, #020202 100%)',
+            color: '#fff',
+            fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        }}>
+            <section style={{
+                width: 'min(100%, 420px)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '28px',
+                background: 'rgba(0,0,0,0.68)',
+                backdropFilter: 'blur(24px)',
+                padding: '32px',
+                boxShadow: '0 30px 90px rgba(0,0,0,0.45)',
+            }}>
+                <a href="/" aria-label="Vadeo home" style={{ display: 'inline-flex', alignItems: 'center', marginBottom: '28px', color: '#fff', textDecoration: 'none' }}>
+                    <img src="/vadeo-logo-white.png" alt="Vadeo" style={{ width: 138, display: 'block' }} />
+                </a>
+                <h1 style={{ margin: '0 0 8px', fontSize: '30px', letterSpacing: '-0.03em' }}>Admin Login</h1>
+                <p style={{ margin: '0 0 24px', color: 'rgba(255,255,255,0.55)', fontSize: '14px', lineHeight: 1.65 }}>
+                    Private entry for Vadeo account administration. This page is not linked publicly.
+                </p>
 
-            <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none' }}>
-                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '384px', background: 'linear-gradient(to bottom, rgba(59, 130, 246, 0.1), transparent)' }} />
-            </div>
+                <form onSubmit={handleLogin} style={{ display: 'grid', gap: '14px' }}>
+                    <input
+                        type="email"
+                        placeholder="Admin email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        autoComplete="email"
+                        required
+                        style={{
+                            width: '100%',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: '14px',
+                            padding: '14px 16px',
+                            background: 'rgba(255,255,255,0.04)',
+                            color: '#fff',
+                            fontSize: '14px',
+                            outline: 'none',
+                        }}
+                    />
+                    <input
+                        type="password"
+                        placeholder="Password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        autoComplete="current-password"
+                        required
+                        style={{
+                            width: '100%',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: '14px',
+                            padding: '14px 16px',
+                            background: 'rgba(255,255,255,0.04)',
+                            color: '#fff',
+                            fontSize: '14px',
+                            outline: 'none',
+                        }}
+                    />
+                    {error && (
+                        <p style={{
+                            margin: 0,
+                            border: '1px solid rgba(248,113,113,0.28)',
+                            borderRadius: '12px',
+                            padding: '12px 14px',
+                            color: '#fca5a5',
+                            background: 'rgba(127,29,29,0.2)',
+                            fontSize: '13px',
+                        }}>
+                            {error}
+                        </p>
+                    )}
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        style={{
+                            border: '1px solid rgba(255,255,255,0.18)',
+                            borderRadius: '14px',
+                            background: '#fff',
+                            color: '#0a0a0a',
+                            padding: '14px 18px',
+                            fontSize: '14px',
+                            fontWeight: 700,
+                            cursor: loading ? 'not-allowed' : 'pointer',
+                            opacity: loading ? 0.5 : 1,
+                        }}
+                    >
+                        {loading ? 'Signing In...' : 'Sign In'}
+                    </button>
+                </form>
 
-            <div style={{ position: 'relative', zIndex: 10, width: '100%', maxWidth: '400px', padding: '0 1.5rem' }}>
-                <div style={{ backgroundColor: '#111', border: '1px solid #1a1a1a', borderRadius: '1rem', padding: '2.5rem' }}>
-                    <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
-                            <div style={{ padding: '1rem', backgroundColor: '#1e3a8a', borderRadius: '0.75rem' }}>
-                                <Shield size={32} color="#60a5fa" />
-                            </div>
-                        </div>
-                        <h1 style={{ fontSize: '1.875rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>Admin Access</h1>
-                        <p style={{ color: '#888', fontSize: '0.875rem' }}>Continue with a Google account that is listed as an admin.</p>
-                    </div>
-
-                    <form onSubmit={handleLogin}>
-                        {error && (
-                            <div style={{ padding: '0.75rem', backgroundColor: '#7f1d1d', border: '1px solid #991b1b', borderRadius: '0.5rem', marginBottom: '1.5rem' }}>
-                                <p style={{ color: '#fca5a5', fontSize: '0.875rem', margin: 0 }}>{error}</p>
-                            </div>
-                        )}
-
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            style={{
-                                width: '100%',
-                                padding: '0.875rem',
-                                backgroundColor: '#fff',
-                                color: '#111',
-                                border: '1px solid #333',
-                                borderRadius: '0.5rem',
-                                fontSize: '0.875rem',
-                                fontWeight: '600',
-                                cursor: loading ? 'not-allowed' : 'pointer',
-                                opacity: loading ? 0.5 : 1,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '0.5rem',
-                            }}
-                        >
-                            <Chrome size={16} />
-                            {loading ? 'Redirecting...' : 'Continue with Google'}
-                        </button>
-                    </form>
-
-                    <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-                        <a href="/" style={{ color: '#888', fontSize: '0.875rem', textDecoration: 'none' }}>
-                            ← Back to Home
-                        </a>
-                    </div>
+                <div style={{ marginTop: '18px', color: 'rgba(255,255,255,0.22)', fontSize: '12px' }}>
+                    Use the admin credentials configured in Vercel with <code>ADMIN_LOGIN_EMAIL</code> and <code>ADMIN_LOGIN_PASSWORD</code>.
                 </div>
-            </div>
-        </div>
+            </section>
+        </main>
     );
 };

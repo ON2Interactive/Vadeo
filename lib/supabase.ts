@@ -556,10 +556,40 @@ export const storageHelpers = {
 };
 
 export const adminHelpers = {
+  async hasAdminSession() {
+    try {
+      const data = await fetchJson<{ authenticated: boolean }>('/api/admin/session');
+      return data.authenticated;
+    } catch {
+      return false;
+    }
+  },
+
+  async login(email: string, password: string) {
+    try {
+      const data = await fetchJson<{ ok: boolean }>('/api/admin/auth', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error };
+    }
+  },
+
+  async logout() {
+    try {
+      const data = await fetchJson<{ ok: boolean }>('/api/admin/logout', { method: 'POST' });
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error };
+    }
+  },
+
   async getAllUsers() {
     try {
-      const data = await fetchJson<any[]>(buildDataUrl('admin', { view: 'users' }));
-      return { data, error: null };
+      const data = await fetchJson<{ users: any[] }>('/api/admin/users?view=users');
+      return { data: data.users || [], error: null };
     } catch (error) {
       return { data: [], error };
     }
@@ -567,7 +597,7 @@ export const adminHelpers = {
 
   async getUserStats() {
     try {
-      const data = await fetchJson<any>(buildDataUrl('admin', { view: 'stats' }));
+      const data = await fetchJson<any>('/api/admin/users?view=stats');
       return { data, error: null };
     } catch (error) {
       return { data: null, error };
@@ -578,11 +608,23 @@ export const adminHelpers = {
     return dbHelpers.updateUserCredits(userId, credits);
   },
 
+  async updateUser(userId: string, updates: { full_name?: string; credits?: number; is_admin?: boolean }) {
+    try {
+      const data = await fetchJson<any>('/api/admin/users', {
+        method: 'PUT',
+        body: JSON.stringify({ id: userId, ...updates }),
+      });
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error };
+    }
+  },
+
   async deleteUser(userId: string) {
     try {
-      await fetchJson(buildDataUrl('admin'), {
+      await fetchJson('/api/admin/users', {
         method: 'DELETE',
-        body: JSON.stringify({ scope: 'admin', userId }),
+        body: JSON.stringify({ id: userId }),
       });
       return { error: null };
     } catch (error) {
@@ -592,9 +634,9 @@ export const adminHelpers = {
 
   async toggleAdminStatus(userId: string, isAdmin: boolean) {
     try {
-      const data = await fetchJson<any>(buildDataUrl('admin'), {
-        method: 'PATCH',
-        body: JSON.stringify({ scope: 'admin', userId, is_admin: isAdmin }),
+      const data = await fetchJson<any>('/api/admin/users', {
+        method: 'PUT',
+        body: JSON.stringify({ id: userId, is_admin: isAdmin }),
       });
       return { data, error: null };
     } catch (error) {

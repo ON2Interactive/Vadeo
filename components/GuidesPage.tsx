@@ -35,6 +35,33 @@ const guideCards = [
     },
 ];
 
+const guideFaqs = [
+    {
+        question: 'How do I start building a video ad in Vadeo?',
+        answer: 'Start by creating a new project, choosing the right aspect ratio, and uploading your product images or footage. From there you can build a scene manually on the canvas or move into Motion or Motion AI depending on the type of output you need.',
+    },
+    {
+        question: 'When should I use Motion instead of Motion AI?',
+        answer: 'Use Motion when you want to sequence uploaded images or video yourself and control the structure of the scene directly. Use Motion AI when you want Vadeo to generate a motion scene from an image or frame pair and then refine it with overlays and CTA copy.',
+    },
+    {
+        question: 'How do aspect ratios work in Vadeo?',
+        answer: 'Aspect ratios define the canvas size for the scene you are building. Choose vertical for reels and stories, square for feeds, and widescreen for websites, paid placements, or landscape campaign videos.',
+    },
+    {
+        question: 'How do I add branding and offer copy?',
+        answer: 'Use text, overlays, and supporting elements on the canvas to add headlines, offer copy, CTA messaging, and brand structure. These layers remain editable so you can reposition, refine, or remove them before export.',
+    },
+    {
+        question: 'How do exports work for different plans?',
+        answer: 'Your plan determines generation access and resolution. Standard supports 1080p generation, while Premium supports 4K. Motion and the editor remain available for broader scene-building, while generation tools follow the limits of your plan.',
+    },
+    {
+        question: 'How do I keep work from getting lost?',
+        answer: 'Vadeo autosaves projects to your account so you can come back to them later. Once a project has been saved, refreshing or returning to the editor should restore the latest saved state instead of starting you from a blank document.',
+    },
+];
+
 const GuidesPage: React.FC<GuidesPageProps> = () => {
     React.useEffect(() => {
         window.scrollTo(0, 0);
@@ -78,6 +105,20 @@ const GuidesPage: React.FC<GuidesPageProps> = () => {
                             </div>
                         );
                     })}
+                </div>
+            </section>
+
+            <section className="relative z-10 max-w-4xl mx-auto px-8 pb-28">
+                <h2 className="mb-16 text-center text-[16px] font-bold tracking-[-0.04em] text-white sm:text-[24px] md:text-[30px] lg:text-[36px]">
+                    Using Vadeo Features
+                </h2>
+                <div className="space-y-8">
+                    {guideFaqs.map((item) => (
+                        <div key={item.question} className="space-y-3">
+                            <h3 className="text-xl font-semibold text-white">{item.question}</h3>
+                            <p className="leading-relaxed text-zinc-300">{item.answer}</p>
+                        </div>
+                    ))}
                 </div>
             </section>
 

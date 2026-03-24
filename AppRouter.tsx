@@ -21,13 +21,14 @@ import UseCasesPage from './components/UseCasesPage';
 import PricingPage from './components/PricingPage';
 import FAQPage from './components/FAQPage';
 import HelpPage from './components/HelpPage';
+import GuidesPage from './components/GuidesPage';
 
 import TermsPage from './components/TermsPage';
 import PrivacyPage from './components/PrivacyPage';
 import CookiePage from './components/CookiePage';
 import DMCAPage from './components/DMCAPage';
 
-type View = 'landing' | 'login' | 'signup' | 'verifyEmail' | 'dashboard' | 'editor' | 'admin' | 'adminLogin' | 'contact' | 'about' | 'useCases' | 'pricing' | 'faq' | 'help' | 'terms' | 'privacy' | 'cookie' | 'dmca' | 'googleCallback';
+type View = 'landing' | 'login' | 'signup' | 'verifyEmail' | 'dashboard' | 'editor' | 'admin' | 'adminLogin' | 'contact' | 'about' | 'useCases' | 'pricing' | 'faq' | 'help' | 'guides' | 'terms' | 'privacy' | 'cookie' | 'dmca' | 'googleCallback';
 
 const AppRouter: React.FC = () => {
     const [view, setView] = useState<View>('landing');
@@ -115,6 +116,8 @@ const AppRouter: React.FC = () => {
             setView('faq');
         } else if (path === '/help') {
             setView('help');
+        } else if (path === '/guides') {
+            setView('guides');
         } else if (path === '/terms') {
             setView('terms');
         } else if (path === '/privacy') {
@@ -191,6 +194,8 @@ const AppRouter: React.FC = () => {
                 setView('faq');
             } else if (path === '/help') {
                 setView('help');
+            } else if (path === '/guides') {
+                setView('guides');
             } else if (path === '/terms') {
                 setView('terms');
             } else if (path === '/privacy') {
@@ -242,6 +247,8 @@ const AppRouter: React.FC = () => {
                 setView('faq');
             } else if (path === '/help') {
                 setView('help');
+            } else if (path === '/guides') {
+                setView('guides');
             } else if (path === '/terms') {
                 setView('terms');
             } else if (path === '/privacy') {
@@ -367,6 +374,14 @@ const AppRouter: React.FC = () => {
     if (view === 'help') {
         return (
             <HelpPage
+                onStartEditing={() => setView('signup')}
+            />
+        );
+    }
+
+    if (view === 'guides') {
+        return (
+            <GuidesPage
                 onStartEditing={() => setView('signup')}
             />
         );

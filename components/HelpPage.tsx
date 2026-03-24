@@ -64,12 +64,12 @@ const HelpPage: React.FC<HelpPageProps> = ({ onStartEditing }) => {
                             <BookOpen size={24} className="text-purple-400" />
                         </div>
                         <div>
-                            <h3 className="text-2xl font-bold mb-2">Tutorials & Guides</h3>
+                            <h3 className="text-2xl font-bold mb-2">How-To Guides</h3>
                             <p className="text-zinc-400 leading-relaxed mb-4">
-                                Learn the basics of Vadeo, from uploading your first images to exporting a finished ad.
+                                Learn how to use Vadeo, from building your first scene to generating motion and exporting a finished ad.
                             </p>
-                            <a href="/tutorials" className="text-purple-400 font-semibold hover:text-purple-300 transition-colors inline-flex items-center gap-2">
-                                View Tutorials
+                            <a href="/guides" className="text-purple-400 font-semibold hover:text-purple-300 transition-colors inline-flex items-center gap-2">
+                                View Guides
                             </a>
                         </div>
                     </div>

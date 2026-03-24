@@ -5,7 +5,6 @@ interface UserProfile {
   id: string;
   email: string;
   full_name: string;
-  credits: number;
   is_admin: boolean;
   created_at: string;
   updated_at: string;
@@ -18,11 +17,10 @@ interface UserProfile {
 
 interface UserStats {
   totalUsers: number;
-  totalCredits: number;
   joinsToday: number;
 }
 
-type DraftState = Record<string, { full_name: string; credits: number }>;
+type DraftState = Record<string, { full_name: string }>;
 
 export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -56,7 +54,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         Object.fromEntries(
           usersResult.data.map((user: UserProfile) => [
             user.id,
-            { full_name: user.full_name || '', credits: user.credits || 0 },
+            { full_name: user.full_name || '' },
           ])
         )
       );
@@ -65,12 +63,11 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     setLoading(false);
   };
 
-  const setDraftField = (id: string, field: 'full_name' | 'credits', value: string | number) => {
+  const setDraftField = (id: string, field: 'full_name', value: string) => {
     setDrafts((current) => ({
       ...current,
       [id]: {
         full_name: current[id]?.full_name ?? '',
-        credits: current[id]?.credits ?? 0,
         [field]: value,
       },
     }));
@@ -82,7 +79,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     setSavingUserId(user.id);
     const { error } = await adminHelpers.updateUser(user.id, {
       full_name: draft.full_name,
-      credits: draft.credits,
     });
     setSavingUserId(null);
 
@@ -129,13 +125,14 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     if (!term) return users;
 
     return users.filter((user) =>
-      [
-        user.email,
-        user.full_name,
-        user.plan,
-        user.status,
-        user.trial_left,
-      ]
+                      [
+                        user.email,
+                        user.full_name,
+                        user.plan,
+                        user.status,
+                        user.trial_left,
+                        user.is_admin ? 'admin' : '',
+                      ]
         .filter(Boolean)
         .join(' ')
         .toLowerCase()
@@ -165,7 +162,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
               <strong style={{ fontSize: '18px', fontWeight: 700 }}>{stats?.totalUsers ?? users.length} users</strong>
               {stats && (
                 <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '13px' }}>
-                  {stats.totalCredits} total credits · {stats.joinsToday} joined today
+                  {stats.joinsToday} joined today
                 </span>
               )}
             </div>
@@ -216,9 +213,9 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                   <tr>
                     <th style={headerCellStyle}>Email</th>
                     <th style={headerCellStyle}>Name</th>
-                    <th style={headerCellStyle}>Credits</th>
                     <th style={headerCellStyle}>Trial Left</th>
                     <th style={headerCellStyle}>Trial Claimed</th>
+                    <th style={headerCellStyle}>Motion Trial Downloads</th>
                     <th style={headerCellStyle}>Plan</th>
                     <th style={headerCellStyle}>Status</th>
                     <th style={headerCellStyle}>Created</th>
@@ -236,7 +233,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                     </tr>
                   ) : (
                     filteredUsers.map((user) => {
-                      const draft = drafts[user.id] || { full_name: user.full_name || '', credits: user.credits || 0 };
+                      const draft = drafts[user.id] || { full_name: user.full_name || '' };
                       return (
                         <tr key={user.id} style={rowStyle}>
                           <td style={cellStyle}>{user.email}</td>
@@ -250,17 +247,9 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                             />
                             {user.is_admin && <span style={statusPillStyle}>Admin</span>}
                           </td>
-                          <td style={cellStyle}>
-                            <input
-                              type="number"
-                              min={0}
-                              value={draft.credits}
-                              onChange={(event) => setDraftField(user.id, 'credits', Number.parseInt(event.target.value, 10) || 0)}
-                              style={{ ...tableInputStyle, width: 92 }}
-                            />
-                          </td>
                           <td style={cellStyle}>{user.trial_left}</td>
                           <td style={cellStyle}>{user.trial_claimed ? 'Yes' : 'No'}</td>
+                          <td style={cellStyle}>{user.motion_downloads_used ?? 0}</td>
                           <td style={cellStyle}>
                             <span style={statusPillStyle}>{formatPlan(user.plan)}</span>
                           </td>

@@ -29,7 +29,7 @@ const Footer: React.FC = () => {
             links: [
                 { label: 'Features', path: '/#features' },
                 { label: 'Pricing', path: '/pricing' },
-                { label: 'Sign In', path: '/signin' },
+                { label: 'Login', path: '/login' },
                 { label: 'Get Started', path: '/signup' },
             ]
         },

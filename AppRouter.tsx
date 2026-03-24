@@ -140,7 +140,7 @@ const AppRouter: React.FC = () => {
             setView('dashboard');
         } else if (path.startsWith('/editor')) {
             setView('editor');
-        } else if (path === '/signin') {
+        } else if (path === '/signin' || path === '/login') {
             setView('login');
         } else if (path === '/signup') {
             setView('signup');
@@ -244,7 +244,7 @@ const AppRouter: React.FC = () => {
             } else {
                 // Default for unknown authenticated routes? 
                 // Maybe check if it matches other public routes
-                if (path === '/signin' || path === '/signup') {
+                if (path === '/signin' || path === '/login' || path === '/signup') {
                     navigate(canAccessEditor ? '/editor' : wantsTrial ? '/signup?trial=1' : '/pricing', { replace: true });
                 } else {
                     setView('landing'); // Default to landing for unknown
@@ -294,7 +294,7 @@ const AppRouter: React.FC = () => {
                 setView('cookie');
             } else if (path === '/dmca') {
                 setView('dmca');
-            } else if (path === '/signin') {
+            } else if (path === '/signin' || path === '/login') {
                 setView('login');
             } else if (path === '/signup') {
                 setView('signup');
@@ -332,7 +332,7 @@ const AppRouter: React.FC = () => {
     };
 
     const handleLogout = () => {
-        navigate('/signin');
+        navigate('/login');
         setCurrentProject(null);
     };
 

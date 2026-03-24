@@ -22,13 +22,14 @@ import PricingPage from './components/PricingPage';
 import FAQPage from './components/FAQPage';
 import HelpPage from './components/HelpPage';
 import GuidesPage from './components/GuidesPage';
+import GuideDetailPage from './components/GuideDetailPage';
 
 import TermsPage from './components/TermsPage';
 import PrivacyPage from './components/PrivacyPage';
 import CookiePage from './components/CookiePage';
 import DMCAPage from './components/DMCAPage';
 
-type View = 'landing' | 'login' | 'signup' | 'verifyEmail' | 'dashboard' | 'editor' | 'admin' | 'adminLogin' | 'contact' | 'about' | 'useCases' | 'pricing' | 'faq' | 'help' | 'guides' | 'terms' | 'privacy' | 'cookie' | 'dmca' | 'googleCallback';
+type View = 'landing' | 'login' | 'signup' | 'verifyEmail' | 'dashboard' | 'editor' | 'admin' | 'adminLogin' | 'contact' | 'about' | 'useCases' | 'pricing' | 'faq' | 'help' | 'guides' | 'guideDetail' | 'terms' | 'privacy' | 'cookie' | 'dmca' | 'googleCallback';
 
 const AppRouter: React.FC = () => {
     const [view, setView] = useState<View>('landing');
@@ -39,6 +40,7 @@ const AppRouter: React.FC = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [hasSubscription, setHasSubscription] = useState(false);
     const [trialState, setTrialState] = useState<TrialState>({ status: 'none', startedAt: null, expiresAt: null });
+    const [guideSlug, setGuideSlug] = useState<string | null>(null);
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -116,7 +118,11 @@ const AppRouter: React.FC = () => {
             setView('faq');
         } else if (path === '/help') {
             setView('help');
+        } else if (path.startsWith('/guides/')) {
+            setGuideSlug(path.replace('/guides/', ''));
+            setView('guideDetail');
         } else if (path === '/guides') {
+            setGuideSlug(null);
             setView('guides');
         } else if (path === '/terms') {
             setView('terms');
@@ -194,7 +200,11 @@ const AppRouter: React.FC = () => {
                 setView('faq');
             } else if (path === '/help') {
                 setView('help');
+            } else if (path.startsWith('/guides/')) {
+                setGuideSlug(path.replace('/guides/', ''));
+                setView('guideDetail');
             } else if (path === '/guides') {
+                setGuideSlug(null);
                 setView('guides');
             } else if (path === '/terms') {
                 setView('terms');
@@ -247,7 +257,11 @@ const AppRouter: React.FC = () => {
                 setView('faq');
             } else if (path === '/help') {
                 setView('help');
+            } else if (path.startsWith('/guides/')) {
+                setGuideSlug(path.replace('/guides/', ''));
+                setView('guideDetail');
             } else if (path === '/guides') {
+                setGuideSlug(null);
                 setView('guides');
             } else if (path === '/terms') {
                 setView('terms');
@@ -385,6 +399,10 @@ const AppRouter: React.FC = () => {
                 onStartEditing={() => setView('signup')}
             />
         );
+    }
+
+    if (view === 'guideDetail' && guideSlug) {
+        return <GuideDetailPage slug={guideSlug} />;
     }
 
     if (view === 'terms') {

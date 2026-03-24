@@ -1,66 +1,11 @@
 import React from 'react';
-import { BookOpen, Clapperboard, Layers3, Sparkles, Wand2 } from 'lucide-react';
 import Navigation from './Navigation';
 import Footer from './Footer';
+import { guideArticles, guideFaqs } from './guideContent';
 
 interface GuidesPageProps {
     onStartEditing?: () => void;
 }
-
-const guideCards = [
-    {
-        icon: Layers3,
-        title: 'How to Build a Video Ad Scene',
-        body: 'Learn how to place visuals on the canvas, structure a scene, add copy, and shape a polished ad layout before export.',
-    },
-    {
-        icon: Clapperboard,
-        title: 'How to Use Motion',
-        body: 'Upload images or video, set timing, preview movement, and turn one scene into a polished motion-driven ad draft.',
-    },
-    {
-        icon: Sparkles,
-        title: 'How to Generate with AI',
-        body: 'Use Vadeo generation tools to create ad-ready video from visuals, prompts, and branded direction in 1080p or 4K.',
-    },
-    {
-        icon: Wand2,
-        title: 'How to Use Motion AI',
-        body: 'Generate an 8-second AI motion scene from an image or frame pair, then refine it with overlays, CTA copy, and export settings.',
-    },
-    {
-        icon: BookOpen,
-        title: 'How to Export for Different Placements',
-        body: 'Prepare scenes for vertical, square, and widescreen placements so you can deliver social ads, website videos, and campaign assets faster.',
-    },
-];
-
-const guideFaqs = [
-    {
-        question: 'How do I start building a video ad in Vadeo?',
-        answer: 'Start by creating a new project, choosing the right aspect ratio, and uploading your product images or footage. From there you can build a scene manually on the canvas or move into Motion or Motion AI depending on the type of output you need.',
-    },
-    {
-        question: 'When should I use Motion instead of Motion AI?',
-        answer: 'Use Motion when you want to sequence uploaded images or video yourself and control the structure of the scene directly. Use Motion AI when you want Vadeo to generate a motion scene from an image or frame pair and then refine it with overlays and CTA copy.',
-    },
-    {
-        question: 'How do aspect ratios work in Vadeo?',
-        answer: 'Aspect ratios define the canvas size for the scene you are building. Choose vertical for reels and stories, square for feeds, and widescreen for websites, paid placements, or landscape campaign videos.',
-    },
-    {
-        question: 'How do I add branding and offer copy?',
-        answer: 'Use text, overlays, and supporting elements on the canvas to add headlines, offer copy, CTA messaging, and brand structure. These layers remain editable so you can reposition, refine, or remove them before export.',
-    },
-    {
-        question: 'How do exports work for different plans?',
-        answer: 'Your plan determines generation access and resolution. Standard supports 1080p generation, while Premium supports 4K. Motion and the editor remain available for broader scene-building, while generation tools follow the limits of your plan.',
-    },
-    {
-        question: 'How do I keep work from getting lost?',
-        answer: 'Vadeo autosaves projects to your account so you can come back to them later. Once a project has been saved, refreshing or returning to the editor should restore the latest saved state instead of starting you from a blank document.',
-    },
-];
 
 const GuidesPage: React.FC<GuidesPageProps> = () => {
     React.useEffect(() => {
@@ -90,19 +35,20 @@ const GuidesPage: React.FC<GuidesPageProps> = () => {
 
             <section className="relative z-10 -mt-[140px] max-w-7xl mx-auto px-8 pb-24">
                 <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                    {guideCards.map((guide) => {
+                    {guideArticles.map((guide) => {
                         const Icon = guide.icon;
                         return (
-                            <div
+                            <a
                                 key={guide.title}
+                                href={`/guides/${guide.slug}`}
                                 className="rounded-2xl border border-zinc-800/50 bg-zinc-900/30 p-8 backdrop-blur transition-all hover:border-blue-500/30"
                             >
                                 <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/10">
                                     <Icon size={22} className="text-blue-400" />
                                 </div>
                                 <h2 className="mb-3 text-2xl font-bold">{guide.title}</h2>
-                                <p className="leading-relaxed text-zinc-400">{guide.body}</p>
-                            </div>
+                                <p className="leading-relaxed text-zinc-400">{guide.cardBody}</p>
+                            </a>
                         );
                     })}
                 </div>

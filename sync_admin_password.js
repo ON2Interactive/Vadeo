@@ -28,7 +28,7 @@ async function updateSupabasePassword() {
         });
 
         if (!targetError) {
-            console.log('Admin password is already set to BatchoCanvas@$@$ in Supabase.');
+            console.log('Admin password is already set to the configured target password in Supabase.');
             return;
         }
 
@@ -47,7 +47,7 @@ async function updateSupabasePassword() {
     if (updateError) {
         console.error('Failed to update password in Supabase:', updateError.message);
     } else {
-        console.log('Admin password successfully updated to BatchoCanvas@$@$ in Supabase!');
+        console.log('Admin password successfully updated in Supabase!');
     }
 }
 

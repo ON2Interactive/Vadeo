@@ -90,7 +90,7 @@ const App: React.FC<AppProps> = ({ initialProject, onBackToDashboard }) => {
 
   // Initialize User & Credits
   useEffect(() => {
-    document.title = "Editor | BatchoCanvas";
+    document.title = "Editor | Vadeo";
     authHelpers.getCurrentUser().then(async (user) => {
       if (user) {
         setUserId(user.id);

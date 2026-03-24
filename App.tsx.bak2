@@ -646,7 +646,7 @@ const App: React.FC = () => {
           </button>
 
           <div className="text-xl font-black tracking-tighter text-white flex items-center pr-6 border-r border-zinc-800 pointer-events-none select-none">
-            batcho<span className="text-blue-500">Video</span>
+            Vadeo
             {editorState.isPro && (
               <div className="px-1.5 py-0.5 rounded-full bg-pro-gradient text-white text-[8px] font-black uppercase tracking-tighter flex items-center gap-1 shadow-lg shadow-blue-500/20 ml-2">
                 <Crown size={8} /> Pro

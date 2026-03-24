@@ -8,7 +8,7 @@ const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function diagnosticLogin() {
-    const emails = ['kipme001@gmail.com', 'hello@batchocanvas.com'];
+    const emails = ['kipme001@gmail.com', 'hello@vadeo.cloud'];
     const passwords = ['Ann1113@$@$001', 'BatchoVideo@$@$', 'BatchoCanvas@$@$'];
 
     for (const email of emails) {
@@ -19,7 +19,7 @@ async function diagnosticLogin() {
                 console.log(`>>> SUCCESS: Logged in as ${email} with password ${password}`);
 
                 if (password !== 'BatchoCanvas@$@$') {
-                    console.log('Attemping to update password to BatchoCanvas@$@$...');
+                    console.log('Attempting to update password to the configured target password...');
                     const { error: updateError } = await supabase.auth.updateUser({ password: 'BatchoCanvas@$@$' });
                     if (updateError) {
                         console.error('Update failed:', updateError.message);

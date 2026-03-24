@@ -13,7 +13,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStartEditing }) => {
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 sm:px-10 py-6 sm:py-10 bg-gradient-to-b from-black/80 to-transparent backdrop-blur-sm">
         <div className="flex items-center">
           <div className="text-xl sm:text-2xl font-bold tracking-[-0.07em] leading-none">
-            batchoCanvas
+            Vadeo
           </div>
         </div>
 
@@ -94,7 +94,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStartEditing }) => {
         <div className="max-w-7xl mx-auto flex flex-col items-end gap-12 sm:gap-20">
           {/* Logo - Matching the provided image wordmark */}
           <div className="text-3xl sm:text-5xl font-bold tracking-[-0.07em] leading-none text-right">
-            batchoCanvas
+            Vadeo
           </div>
 
           {/* Right-aligned content stack */}

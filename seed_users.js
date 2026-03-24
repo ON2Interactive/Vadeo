@@ -37,7 +37,7 @@ async function seedUsers() {
     }
 
     // 2. Create a Test User
-    const testEmail = 'testuser@batchocanvas.com';
+    const testEmail = 'testuser@vadeo.cloud';
     const testPassword = 'Password123!';
 
     console.log(`Creating Test User: ${testEmail}`);

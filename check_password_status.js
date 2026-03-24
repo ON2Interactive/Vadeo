@@ -21,7 +21,7 @@ async function checkPasswords() {
     });
 
     if (!oldError) {
-        console.log('Login successful with OLD password (BatchoVideo@$@$). Proceeding to update...');
+        console.log('Login successful with the old password. Proceeding to update...');
         const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
         if (updateError) {
             console.error('Update failed:', updateError.message);
@@ -38,7 +38,7 @@ async function checkPasswords() {
     });
 
     if (!newError) {
-        console.log('Login successful with NEW password (BatchoCanvas@$@$). Database is already in sync.');
+        console.log('Login successful with the configured new password. Database is already in sync.');
     } else {
         console.error('Login failed with both old and new passwords.');
         console.error('Old PW Error:', oldError.message);

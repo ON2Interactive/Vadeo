@@ -205,7 +205,12 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
             <section className="relative z-10 px-6 py-20 sm:px-8 sm:py-24">
                 <div className="mx-auto max-w-[1400px]">
                     <div className="mx-auto max-w-5xl text-center">
-                        <h2 className={sectionH2ClassName}>Motion&Motion AI</h2>
+                        <div className="mb-4 flex justify-center">
+                            <span className="rounded-full border border-blue-400/40 bg-blue-500/15 px-4 py-1 text-[12px] font-semibold uppercase tracking-[0.18em] text-blue-300">
+                                New
+                            </span>
+                        </div>
+                        <h2 className={sectionH2ClassName}>Motion &amp; Motion AI</h2>
                     </div>
 
                     <div className="mt-10 grid gap-6 lg:grid-cols-2">
@@ -233,14 +238,14 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
                     </div>
 
                     <div className="mt-8 grid gap-6 text-center lg:grid-cols-2">
-                        <div className="space-y-3 rounded-[18px] border border-white/10 bg-zinc-950/70 px-6 py-6">
+                        <div className="space-y-3 px-2 py-2">
                             <h3 className="text-[18px] font-bold text-white sm:text-[20px]">Motion</h3>
                             <p className="text-[15px] leading-relaxed text-white/70">
                                 Build ads from uploaded images or video, sequence the motion on one scene, and shape the final output with editable overlays, titles, and CTA layers.
                             </p>
                         </div>
 
-                        <div className="space-y-3 rounded-[18px] border border-white/10 bg-zinc-950/70 px-6 py-6">
+                        <div className="space-y-3 px-2 py-2">
                             <h3 className="text-[18px] font-bold text-white sm:text-[20px]">Motion AI</h3>
                             <p className="text-[15px] leading-relaxed text-white/70">
                                 Turn a single product image or two frame references into an AI-generated 8-second scene with sound, then refine it inside Vadeo with branded ad layers.

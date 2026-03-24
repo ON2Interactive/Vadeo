@@ -85,7 +85,7 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
                             className="text-white text-[18px] sm:text-[28px] md:text-[44px] lg:text-[60px] font-bold leading-[1.05] tracking-[-0.04em]"
                             style={{ fontFamily: 'Helvetica, Arial, sans-serif', fontWeight: 700 }}
                         >
-                            Create video ads for social and everywhere easily.
+                            Create video ads for social, websites, and campaigns.
                         </h1>
 
                         <div className="mt-8 flex justify-center">
@@ -122,7 +122,7 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
 
                     <div className="mx-auto mt-8 max-w-5xl space-y-3 text-center text-[16px] leading-relaxed text-white/70">
                         <p>
-                            Turn product shots and campaign images into video ads in one workspace. Design your ads, generate motion, and export polished creative without jumping between separate tools.
+                            Turn product visuals, campaign assets, and imported footage into ad-ready videos in one workspace. Build, generate, and export polished creative without jumping between separate tools.
                         </p>
                         <h2 className="text-[16px] font-bold tracking-[-0.04em] text-white sm:text-[24px] md:text-[30px] lg:text-[36px]">
                             Built-In Timeline for Animation
@@ -152,7 +152,7 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
 
                     <div className="mx-auto mt-8 max-w-5xl space-y-3 text-center text-[16px] leading-relaxed text-white/70">
                         <p>
-                            Upload product images or video, arrange scenes on the canvas, and build the structure of your ad inside one workspace.
+                            Upload product images or footage, arrange scenes on the canvas, and build structured ad concepts for social, websites, and campaign delivery.
                         </p>
                     </div>
                 </div>
@@ -179,7 +179,7 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
 
                     <div className="mx-auto mt-8 max-w-5xl space-y-3 text-center text-[16px] leading-relaxed text-white/70">
                         <p>
-                            Generate in 1080p or 4K depending on your plan, then refine with narrative, sound effects, or ambiance and export polished campaign assets.
+                            Generate in 1080p or 4K depending on your plan, then refine with sound, narrative, and branded overlays to ship campaign-ready assets faster.
                         </p>
                     </div>
 
@@ -196,7 +196,7 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
 
                     <div className="mx-auto mt-8 max-w-5xl space-y-3 text-center text-[16px] leading-relaxed text-white/70">
                         <p>
-                            Overlay uploaded or generated videos with brand assets, shapes, icons, and text to make your videos truly unique.
+                            Layer in brand assets, offer copy, titles, icons, and CTA treatments so every export feels campaign-ready instead of generic.
                         </p>
                     </div>
                 </div>
@@ -241,14 +241,14 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
                         <div className="space-y-3 px-2 py-2">
                             <h3 className="text-[18px] font-bold text-white sm:text-[20px]">Motion</h3>
                             <p className="text-[15px] leading-relaxed text-white/70">
-                                Build ads from uploaded images or video, sequence the motion on one scene, and shape the final output with editable overlays, titles, and CTA layers.
+                                Build polished ad scenes from uploaded images or video, sequence the motion on one canvas, and shape the final output with editable overlays, titles, and CTA layers.
                             </p>
                         </div>
 
                         <div className="space-y-3 px-2 py-2">
                             <h3 className="text-[18px] font-bold text-white sm:text-[20px]">Motion AI</h3>
                             <p className="text-[15px] leading-relaxed text-white/70">
-                                Turn a single product image or two frame references into an AI-generated 8-second scene with sound, then refine it inside Vadeo with branded ad layers.
+                                Turn a product image or frame references into an AI-generated scene with sound, then refine it inside Vadeo with branded messaging, overlays, and end-card structure.
                             </p>
                         </div>
                     </div>
@@ -362,13 +362,13 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
                         <h2 className={sectionH2ClassName}>Why Vadeo?</h2>
                         <div className="mt-6 space-y-5 text-[16px] leading-relaxed text-white/70">
                             <p>
-                                Vadeo is being shaped for creators and marketers who need faster paths from still assets to motion creative.
+                                Vadeo is built for advertisers, agencies, creators, web designers, and social marketers who need faster paths from static assets to polished motion creative.
                             </p>
                             <p>
-                                Instead of treating every project like a full video edit, Vadeo focuses on the specific job of turning uploaded images into campaign-ready video ads.
+                                Instead of treating every project like a full video edit, Vadeo focuses on the specific job of turning visuals into campaign-ready ads you can ship, test, and adapt quickly.
                             </p>
                             <p className="font-semibold text-white">
-                                Create faster. Iterate easily. Share everywhere.
+                                Create faster. Iterate for every placement. Deliver with confidence.
                             </p>
                         </div>
                     </div>
@@ -377,10 +377,10 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
                         <h2 className={sectionH2ClassName}>What Can I Create?</h2>
                         <div className="mt-6 space-y-5 text-[16px] leading-relaxed text-white/70">
                             <p>
-                                Vadeo is focused on ad formats built from product shots, lifestyle imagery, campaign visuals, and imported video.
+                                Vadeo is built for product promos, paid social creative, landing-page videos, campaign variations, and branded motion assets.
                             </p>
                             <p>
-                                Build vertical, square, and landscape ad variations, test multiple scenes, and adapt a single creative idea across formats.
+                                Build vertical, square, and landscape versions, test multiple scenes, and adapt a single creative idea across websites, social placements, and client deliverables.
                             </p>
                             <p className="font-semibold text-white">
                                 Create more, without starting over.
@@ -392,10 +392,10 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
                         <h2 className={sectionH2ClassName}>Built for Creators</h2>
                         <div className="mt-6 space-y-5 text-[16px] leading-relaxed text-white/70">
                             <p>
-                                Vadeo is built for teams that care about output speed, layout consistency, and ad iteration.
+                                Vadeo is built for teams that care about output speed, visual consistency, and repeatable ad production.
                             </p>
                             <p>
-                                Whether you're producing ecommerce promos or paid social variations, the goal is to reuse assets, test ideas quickly, and get polished outputs faster.
+                                Whether you are producing ecommerce promos, client ads, or paid social variations, the goal is to reuse assets, test ideas quickly, and get polished outputs faster.
                             </p>
                             <p className="font-semibold text-white">
                                 Create once. Adapt everywhere.
@@ -503,7 +503,7 @@ const NewLandingPage: React.FC<NewLandingPageProps> = ({ onStartEditing, onBuyCr
                 <div className="max-w-[800px] mx-auto text-center">
                     <h2 className={sectionH2ClassName}>Pricing</h2>
                     <p className="text-base text-zinc-300 leading-relaxed">
-                        Start with workspace access, then upgrade for 1080p or 4K video generations as your production needs grow.
+                        Start with workspace access, then upgrade for 1080p or 4K generations as your production volume, clients, and campaign needs grow.
                     </p>
                 </div>
 

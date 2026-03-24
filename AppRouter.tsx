@@ -234,7 +234,7 @@ const AppRouter: React.FC = () => {
                 } else {
                     navigate('/admin-login', { replace: true });
                 }
-            } else if (path === '/admin-login') {
+            } else if (path === '/admin-login' || path === '/adminlogin') {
                 if (adminSession) {
                     setIsAdminAuthenticated(true);
                     navigate('/admin', { replace: true });
@@ -261,7 +261,7 @@ const AppRouter: React.FC = () => {
                 } else {
                     setView('adminLogin');
                 }
-            } else if (path === '/admin-login') {
+            } else if (path === '/admin-login' || path === '/adminlogin') {
                 if (adminSession) {
                     setIsAdminAuthenticated(true);
                     navigate('/admin', { replace: true });

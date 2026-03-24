@@ -120,6 +120,24 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     await loadData();
   };
 
+  const handleResetTrial = async (user: UserProfile) => {
+    if (!window.confirm(`Reset the 24-hour trial for ${user.email}? This will restart their trial and reset Motion trial downloads.`)) {
+      return;
+    }
+
+    setSavingUserId(user.id);
+    const { error } = await adminHelpers.updateUser(user.id, { reset_trial: true } as any);
+    setSavingUserId(null);
+
+    if (error) {
+      showStatus(`Failed to reset trial: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      return;
+    }
+
+    showStatus(`Reset trial for ${user.email}`, 'success');
+    await loadData();
+  };
+
   const filteredUsers = useMemo(() => {
     const term = searchQuery.trim().toLowerCase();
     if (!term) return users;
@@ -154,6 +172,14 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
             <img src="/vadeo-logo-white.png" alt="Vadeo" style={{ width: 138, display: 'block' }} />
             <span style={brandAdminStyle}>Admin</span>
           </a>
+          <div style={navActionsStyle}>
+            <button type="button" style={navButtonStyle} onClick={() => void loadData()}>
+              Refresh
+            </button>
+            <button type="button" style={navButtonStyle} onClick={onLogout}>
+              Log Out
+            </button>
+          </div>
         </header>
 
         <section style={contentShellStyle}>
@@ -175,12 +201,6 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                 placeholder="Search users by email or name"
                 style={searchStyle}
               />
-              <button type="button" style={buttonStyle} onClick={() => void loadData()}>
-                Refresh
-              </button>
-              <button type="button" style={buttonStyle} onClick={onLogout}>
-                Log Out
-              </button>
             </div>
           </header>
 
@@ -272,6 +292,14 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                               </button>
                               <button
                                 type="button"
+                                style={linkButtonStyle}
+                                onClick={() => void handleResetTrial(user)}
+                                disabled={savingUserId === user.id}
+                              >
+                                Reset trial
+                              </button>
+                              <button
+                                type="button"
                                 style={{ ...linkButtonStyle, color: '#fca5a5' }}
                                 onClick={() => void handleDeleteUser(user)}
                                 disabled={user.is_admin || deletingUserId === user.id}
@@ -303,9 +331,9 @@ const pageStyle: React.CSSProperties = {
 };
 
 const shellStyle: React.CSSProperties = {
-  width: 'min(1320px, calc(100vw - 40px))',
+  width: '100%',
   margin: '0 auto',
-  padding: '32px 0 56px',
+  padding: '0 0 56px',
 };
 
 const landingNavStyle: React.CSSProperties = {
@@ -315,10 +343,11 @@ const landingNavStyle: React.CSSProperties = {
   minHeight: 72,
   borderBottom: '1px solid rgba(255,255,255,0.08)',
   marginBottom: 28,
+  padding: '0 32px',
 };
 
 const contentShellStyle: React.CSSProperties = {
-  paddingTop: 8,
+  padding: '8px 32px 0',
 };
 
 const brandLinkStyle: React.CSSProperties = {
@@ -359,6 +388,12 @@ const toolbarStyle: React.CSSProperties = {
   flexWrap: 'wrap',
 };
 
+const navActionsStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 12,
+};
+
 const searchStyle: React.CSSProperties = {
   width: 'min(320px, 100%)',
   border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -376,6 +411,11 @@ const buttonStyle: React.CSSProperties = {
   background: 'transparent',
   color: '#fff',
   cursor: 'pointer',
+};
+
+const navButtonStyle: React.CSSProperties = {
+  ...buttonStyle,
+  minWidth: 108,
 };
 
 const statusStyle: React.CSSProperties = {
